@@ -27,7 +27,8 @@ issues:
         - gosec
 
 linters:
-  disable-all: true
+  disable:
+    - typecheck
   enable:
     - asciicheck
     - bodyclose
@@ -37,7 +38,6 @@ linters:
     - durationcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - funlen
     - gci
     - gocognit
@@ -68,7 +68,6 @@ linters:
     - stylecheck
     - tagliatelle
     - thelper
-    - typecheck
     - unconvert
     - unparam
     - unused
