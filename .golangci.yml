@@ -1,11 +1,32 @@
-version: "2"
 run:
+  tests: true
   build-tags:
     - bench
-    - ""
-  tests: true
+    - !bench
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        allow:
+          - "github.com/stretchr/testify/require"
+          - "fmt"
+          - "golang.org/x/example/hello/reverse"
+  funlen:
+    lines: 150
+    statements: 80
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - gocyclo
+        - gosec
+
 linters:
-  default: none
+  disable-all: true
   enable:
     - asciicheck
     - bodyclose
@@ -15,15 +36,20 @@ linters:
     - durationcheck
     - errorlint
     - exhaustive
+    - exportloopref
     - funlen
+    - gci
     - gocognit
     - goconst
     - gocritic
     - gocyclo
     - godot
+    - gofmt
+    - gofumpt
     - goheader
     - goprintffuncname
     - gosec
+    - gosimple
     - govet
     - importas
     - ineffassign
@@ -38,48 +64,11 @@ linters:
     - predeclared
     - revive
     - staticcheck
+    - stylecheck
     - tagliatelle
     - thelper
+    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-  settings:
-    depguard:
-      rules:
-        main:
-          allow:
-            - fmt
-            - golang.org/x/example/hello/reverse
-    funlen:
-      lines: 150
-      statements: 80
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    rules:
-      - linters:
-          - dupl
-          - errcheck
-          - gocyclo
-          - gosec
-        path: _test\.go
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
-formatters:
-  enable:
-    - gci
-    - gofmt
-    - gofumpt
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
