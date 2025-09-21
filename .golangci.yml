@@ -26,8 +26,6 @@ issues:
         - gosec
 
 linters:
-  disable:
-    - typecheck
   enable:
     - asciicheck
     - bodyclose
