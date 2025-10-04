@@ -5,6 +5,13 @@ run:
     - !bench
 
 linters-settings:
+  depguard:
+    rules:
+      main:
+        allow:
+          - "github.com/stretchr/testify/require"
+          - "fmt"
+          - "golang.org/x/example/hello/reverse"
   funlen:
     lines: 150
     statements: 80
@@ -19,7 +26,6 @@ issues:
         - gosec
 
 linters:
-  disable-all: true
   enable:
     - asciicheck
     - bodyclose
@@ -29,7 +35,6 @@ linters:
     - durationcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - funlen
     - gci
     - gocognit
@@ -60,7 +65,6 @@ linters:
     - stylecheck
     - tagliatelle
     - thelper
-    - typecheck
     - unconvert
     - unparam
     - unused
