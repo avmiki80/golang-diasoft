@@ -20,6 +20,26 @@ func TestCache(t *testing.T) {
 		require.False(t, ok)
 	})
 
+	t.Run("check not found last cache item", func(t *testing.T) {
+		c := NewCache(4)
+
+		ok := c.Set("aaa", 100)
+		require.False(t, ok)
+		ok = c.Set("bbb", 200)
+		require.False(t, ok)
+		ok = c.Set("ccc", 300)
+		require.False(t, ok)
+		ok = c.Set("ddd", 400)
+		require.False(t, ok)
+		_, ok = c.Get("aaa")
+		require.True(t, ok)
+		ok = c.Set("eee", 500)
+		require.False(t, ok)
+
+		_, ok = c.Get("bbb")
+		require.False(t, ok)
+	})
+
 	t.Run("simple", func(t *testing.T) {
 		c := NewCache(5)
 
@@ -50,7 +70,23 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+		c := NewCache(4)
+
+		ok := c.Set("aaa", 100)
+		require.False(t, ok)
+		ok = c.Set("bbb", 200)
+		require.False(t, ok)
+		ok = c.Set("ccc", 300)
+		require.False(t, ok)
+
+		c.Clear()
+
+		_, ok = c.Get("aaa")
+		require.False(t, ok)
+		_, ok = c.Get("bbb")
+		require.False(t, ok)
+		_, ok = c.Get("ccc")
+		require.False(t, ok)
 	})
 }
 
