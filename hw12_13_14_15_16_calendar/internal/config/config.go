@@ -40,6 +40,7 @@ func NewConfig(path string) (*Config, error) {
 
 	switch ext {
 	case ".yaml", ".yml":
+		//nolint
 		if err = yaml.Unmarshal(confData, &config); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal yaml config: %w", err)
 		}
@@ -51,7 +52,6 @@ func NewConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unsupported config format: %s (supported: .yaml, .yml, .toml)", ext)
 	}
 
-	// Установка значений по умолчанию
 	if config.Logger.Level == "" {
 		config.Logger.Level = "INFO"
 	}

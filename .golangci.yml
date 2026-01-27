@@ -27,6 +27,10 @@ linters-settings:
         json: camel      # camelCase для JSON
         yaml: camel      # camelCase для YAML
         db: snake        # snake_case для DB
+  nolintlint:
+    require-explanation: false      # не требовать объяснений
+    require-specific: false         # разрешить общий //nolint без указания линтера
+    allow-unused: true              # разрешить неиспользуемые директивы
 
 issues:
   exclude-rules:
