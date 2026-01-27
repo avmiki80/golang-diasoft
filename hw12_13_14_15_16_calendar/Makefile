@@ -22,8 +22,8 @@ run-img: build-img
 version: build
 	$(BIN) version
 
-#test:
-#	go test -race ./internal/... ./pkg/...
+test:
+	go test -race ./internal/repositories/memory/... ./pkg/...
 
 # Unit-тесты (без БД, только memory storage)
 test-unit:
