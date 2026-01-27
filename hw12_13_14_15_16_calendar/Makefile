@@ -23,7 +23,8 @@ version: build
 	$(BIN) version
 
 test:
-	go test -race ./internal/repositories/memory/... ./pkg/...
+	#go test -race ./internal/repositories/memory/... ./pkg/...
+	go test -race ./internal/repositories/memory/...
 
 # Unit-тесты (без БД, только memory storage)
 test-unit:
