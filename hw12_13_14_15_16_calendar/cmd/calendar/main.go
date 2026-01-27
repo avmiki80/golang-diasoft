@@ -41,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logg := logger.New(config.Logger.Level)
+	logg := logger.New(config.Logger.Level, os.Stdout)
 
 	if err := run(config, logg); err != nil {
 		logg.Error("application error: " + err.Error())

@@ -1,8 +1,8 @@
 package logger
 
 import (
+	"io"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -29,11 +29,11 @@ type logger struct {
 	logger *log.Logger
 }
 
-func New(level string) Logger {
+func New(level string, writer io.Writer) Logger {
 	logLevel := parseLevel(level)
 	return &logger{
 		level:  logLevel,
-		logger: log.New(os.Stdout, Prefix, log.Ldate|log.Ltime|log.Lshortfile),
+		logger: log.New(writer, Prefix, log.Ldate|log.Ltime|log.Lshortfile),
 	}
 }
 
