@@ -1,1 +1,72 @@
 version: "3"
+services:
+  calendar-postgres:
+    image: postgres:16-alpine
+    container_name: calendar-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: calendar
+    ports:
+      - "5432:5432"
+    volumes:
+      - calendar_postgres_data:/var/lib/postgresql/data
+    networks:
+      - calendar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d calendar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  goose-migrate:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile.goose
+    container_name: calendar-goose
+    depends_on:
+      calendar-postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: calendar-postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: calendar
+    volumes:
+      - ../migrations:/migrations:ro
+    networks:
+      - calendar-network
+    restart: "no"
+
+  calendar:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    container_name: calendar-app
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: calendar-postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: calendar
+    volumes:
+      - ../configs:/configs:ro
+    depends_on:
+      calendar-postgres:
+        condition: service_healthy
+      goose-migrate:
+        condition: service_completed_successfully
+    networks:
+      - calendar-network
+    restart: on-failure
+
+networks:
+  calendar-network:
+    driver: bridge
+
+volumes:
+  calendar_postgres_data:

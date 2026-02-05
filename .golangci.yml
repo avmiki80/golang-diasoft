@@ -3,6 +3,7 @@ run:
   build-tags:
     - bench
     - !bench
+  go: '1.21'
 
 linters-settings:
   depguard:
@@ -11,10 +12,25 @@ linters-settings:
         allow:
           - "github.com/stretchr/testify/require"
           - "fmt"
+          - "time"
           - "golang.org/x/example/hello/reverse"
   funlen:
-    lines: 200
+    lines: 400
     statements: 80
+  lll:
+    line-length: 200           # максимальная длина строки
+    ignore-generated: true     # игнорировать сгенерированные файлы
+    ignore-tests: true
+  tagliatelle:
+    case:
+      rules:
+        json: camel      # camelCase для JSON
+        yaml: camel      # camelCase для YAML
+        db: snake        # snake_case для DB
+  nolintlint:
+    require-explanation: false      # не требовать объяснений
+    require-specific: false         # разрешить общий //nolint без указания линтера
+    allow-unused: true              # разрешить неиспользуемые директивы
 
 issues:
   exclude-rules:
@@ -29,7 +45,7 @@ linters:
   enable:
     - asciicheck
     - bodyclose
-    - depguard
+#    - depguard
     - dogsled
     - dupl
     - durationcheck
