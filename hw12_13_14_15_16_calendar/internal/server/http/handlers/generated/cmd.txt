@@ -3,7 +3,7 @@
  -generate types - генерировать структуры данных
  -generate server - генерировать server interface
  -generate chi-server - для Chi router
- -generate gorilla-server - для Gorilla mux (ваш случай)
+ -generate gorilla-server - для Gorilla mux
  -generate client - генерировать HTTP client
  -generate spec - встроить спецификацию
 
@@ -39,5 +39,5 @@ Get-ChildItem C:\go\go1.23.12\bin\ | Select-Object Name
 6. Проверю в подпапке bin:
 Get-ChildItem C:\go\go1.23.12\bin\bin\ -ErrorAction SilentlyContinue | Select-Object Name
 
-7. Отлично! Нашел. Теперь запущу с правильным путем:
+7. Заапуск с правильным путем:
 C:\go\go1.23.12\bin\bin\oapi-codegen.exe -help
