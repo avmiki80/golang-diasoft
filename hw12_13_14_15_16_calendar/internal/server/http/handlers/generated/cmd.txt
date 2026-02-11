@@ -1,0 +1,43 @@
+ C:\go\go1.23.12\bin\bin\oapi-codegen.exe -package handlers -generate types,gorilla,spec -o internal/server/http/handlers/generated/eventhandler.go api/swagger.yaml
+
+ -generate types - генерировать структуры данных
+ -generate server - генерировать server interface
+ -generate chi-server - для Chi router
+ -generate gorilla-server - для Gorilla mux (ваш случай)
+ -generate client - генерировать HTTP client
+ -generate spec - встроить спецификацию
+
+ oapi-codegen -package handlers -generate types,server,spec api/swagger.yaml > internal/server/http/handlers/generated.go
+ oapi-codegen -package models -generate types api/swagger.yaml > internal/models/types.go
+ oapi-codegen -package handlers -generate server api/swagger.yaml > internal/server/http/handlers/server.go
+
+ package: handlers
+ generate:
+   models: true
+   server: true
+   embedded-spec: true
+ output: internal/server/http/handlers/generated.go
+
+oapi-codegen -config oapi-codegen.yaml api/swagger.yaml
+
+
+1. go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+2. Команда установилась, но не найдена в PATH. Нужно добавить GOPATH/bin в PATH или использовать полный путь. Проверю где установлен Go:
+go env GOPATH
+
+3. Проверю, установился ли файл:
+Test-Path C:\go\go1.23.12\bin\oapi-codegen.exe
+
+4. Файл не установился в GOPATH. Проверю правильный GOBIN:
+go env GOBIN
+
+5. GOBIN не установлен. Проверю где Go устанавливает бинарники по умолчанию:
+$env:USERPROFILE + '\go\bin\oapi-codegen.exe' | Test-Path
+Get-ChildItem C:\go\go1.23.12\bin\ | Select-Object Name
+
+6. Проверю в подпапке bin:
+Get-ChildItem C:\go\go1.23.12\bin\bin\ -ErrorAction SilentlyContinue | Select-Object Name
+
+7. Отлично! Нашел. Теперь запущу с правильным путем:
+C:\go\go1.23.12\bin\bin\oapi-codegen.exe -help

@@ -1,0 +1,480 @@
+openapi: 3.0.3
+info:
+  title: Calendar Events API
+  description: API for managing calendar events
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: events
+    description: Operations related to calendar events
+
+paths:
+  /event:
+    post:
+      tags:
+        - events
+      summary: Create a new event
+      description: Creates a new calendar event with the provided details
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+            examples:
+              example1:
+                summary: Example event
+                value:
+                  title: "Team Meeting"
+                  startDate: "2026-02-10T10:00:00Z"
+                  endDate: "2026-02-10T11:00:00Z"
+                  description: "Weekly team sync meeting"
+                  userId: "550e8400-e29b-41d4-a716-446655440000"
+                  offsetTime: 0
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                example1:
+                  value:
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174000"
+                      title: "Team Meeting"
+                      startDate: "2026-02-10T10:00:00Z"
+                      endDate: "2026-02-10T11:00:00Z"
+                      description: "Weekly team sync meeting"
+                      userId: "550e8400-e29b-41d4-a716-446655440000"
+                      offsetTime: 0
+        '400':
+          description: Invalid request body or date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidBody:
+                  value:
+                    error: "invalid request body"
+                invalidDate:
+                  value:
+                    error: "invalid start_date format, use RFC3339"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - events
+      summary: Find events
+      description: Search for events with optional filters by user ID and date ranges
+      operationId: findEvents
+      parameters:
+        - name: userId
+          in: query
+          description: Filter events by user ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: startFrom
+          in: query
+          description: Filter events starting from this date (RFC3339 format)
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: "2026-02-01T00:00:00Z"
+        - name: startTo
+          in: query
+          description: Filter events starting until this date (RFC3339 format)
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: "2026-02-28T23:59:59Z"
+        - name: endFrom
+          in: query
+          description: Filter events ending from this date (RFC3339 format)
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: "2026-02-01T00:00:00Z"
+        - name: endTo
+          in: query
+          description: Filter events ending until this date (RFC3339 format)
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: "2026-02-28T23:59:59Z"
+      responses:
+        '200':
+          description: List of events matching the criteria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                example1:
+                  value:
+                    data:
+                      - id: "123e4567-e89b-12d3-a456-426614174000"
+                        title: "Team Meeting"
+                        startDate: "2026-02-10T10:00:00Z"
+                        endDate: "2026-02-10T11:00:00Z"
+                        description: "Weekly team sync meeting"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        offsetTime: 0
+                      - id: "987fcdeb-51a2-43d7-b456-426614174999"
+                        title: "Project Review"
+                        startDate: "2026-02-15T14:00:00Z"
+                        endDate: "2026-02-15T15:30:00Z"
+                        description: "Monthly project review"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        offsetTime: 30
+        '400':
+          description: Invalid date format in query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidDate:
+                  value:
+                    error: "invalid start_from format, use RFC3339"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /event/{id}:
+    get:
+      tags:
+        - events
+      summary: Get event by ID
+      description: Retrieves a single event by its unique identifier
+      operationId: getEvent
+      parameters:
+        - name: id
+          in: path
+          description: Event ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                example1:
+                  value:
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174000"
+                      title: "Team Meeting"
+                      startDate: "2026-02-10T10:00:00Z"
+                      endDate: "2026-02-10T11:00:00Z"
+                      description: "Weekly team sync meeting"
+                      userId: "550e8400-e29b-41d4-a716-446655440000"
+                      offsetTime: 0
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "event not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - events
+      summary: Update an event
+      description: Updates an existing event with new details
+      operationId: updateEvent
+      parameters:
+        - name: id
+          in: path
+          description: Event ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+            examples:
+              example1:
+                summary: Update event example
+                value:
+                  id: "123e4567-e89b-12d3-a456-426614174000"
+                  title: "Team Meeting - Updated"
+                  startDate: "2026-02-10T11:00:00Z"
+                  endDate: "2026-02-10T12:00:00Z"
+                  description: "Weekly team sync meeting - rescheduled"
+                  userId: "550e8400-e29b-41d4-a716-446655440000"
+                  offsetTime: 15
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                example1:
+                  value:
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174000"
+                      title: "Team Meeting - Updated"
+                      startDate: "2026-02-10T11:00:00Z"
+                      endDate: "2026-02-10T12:00:00Z"
+                      description: "Weekly team sync meeting - rescheduled"
+                      userId: "550e8400-e29b-41d4-a716-446655440000"
+                      offsetTime: 15
+        '400':
+          description: Invalid request body or date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidBody:
+                  value:
+                    error: "invalid request body"
+                invalidDate:
+                  value:
+                    error: "invalid start_date format, use RFC3339"
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "event not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - events
+      summary: Delete an event
+      description: Deletes an event by its unique identifier
+      operationId: deleteEvent
+      parameters:
+        - name: id
+          in: path
+          description: Event ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '204':
+          description: Event deleted successfully (no content)
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "event not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreateEventRequest:
+      type: object
+      required:
+        - title
+        - startDate
+        - endDate
+        - userId
+      properties:
+        title:
+          type: string
+          description: Event title
+          example: "Team Meeting"
+        startDate:
+          type: string
+          format: date-time
+          description: Event start date and time in RFC3339 format
+          example: "2026-02-10T10:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Event end date and time in RFC3339 format
+          example: "2026-02-10T11:00:00Z"
+        description:
+          type: string
+          description: Event description
+          example: "Weekly team sync meeting"
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who owns the event
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        offsetTime:
+          type: integer
+          format: int64
+          description: Time offset in minutes for notifications or reminders
+          example: 0
+          default: 0
+
+    UpdateEventRequest:
+      type: object
+      required:
+        - id
+        - title
+        - startDate
+        - endDate
+        - userId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Event ID
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          description: Event title
+          example: "Team Meeting - Updated"
+        startDate:
+          type: string
+          format: date-time
+          description: Event start date and time in RFC3339 format
+          example: "2026-02-10T11:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Event end date and time in RFC3339 format
+          example: "2026-02-10T12:00:00Z"
+        description:
+          type: string
+          description: Event description
+          example: "Weekly team sync meeting - rescheduled"
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who owns the event
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        offsetTime:
+          type: integer
+          format: int64
+          description: Time offset in minutes for notifications or reminders
+          example: 15
+          default: 0
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique event identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          description: Event title
+          example: "Team Meeting"
+        startDate:
+          type: string
+          format: date-time
+          description: Event start date and time
+          example: "2026-02-10T10:00:00Z"
+        endDate:
+          type: string
+          format: date-time
+          description: Event end date and time
+          example: "2026-02-10T11:00:00Z"
+        description:
+          type: string
+          description: Event description
+          example: "Weekly team sync meeting"
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who owns the event
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        offsetTime:
+          type: integer
+          format: int64
+          description: Time offset in minutes
+          example: 0
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Operation completed successfully"
+        data:
+          description: Response data (can be an object, array, or string)
+          oneOf:
+            - $ref: '#/components/schemas/Event'
+            - type: array
+              items:
+                $ref: '#/components/schemas/Event'
+            - type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "An error occurred"

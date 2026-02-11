@@ -21,9 +21,8 @@ type Application interface {
 	UpdateEvent(ctx context.Context, id string, event events.Event) (*events.Event, error)
 	DeleteEvent(ctx context.Context, id string) error
 	GetEventByID(ctx context.Context, id string) (*events.Event, error)
-	FindEvent(ctx context.Context, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error)
+	FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error)
 }
-
 type App struct {
 	eventService  services.EventService
 	notifyService services.NotificationService
@@ -102,7 +101,7 @@ func (a *App) GetEventByID(ctx context.Context, id string) (*events.Event, error
 	return a.eventService.GetEventByID(ctx, id)
 }
 
-func (a *App) FindEvent(ctx context.Context, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error) {
+func (a *App) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error) {
 	a.logger.Debug(appName + "finding events")
 	return a.eventService.FindEvent(ctx, userID, startFrom, startTo, endFrom, endTo)
 }

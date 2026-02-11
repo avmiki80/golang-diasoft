@@ -38,7 +38,7 @@ func (r *EventRepository) GetByID(ctx context.Context, exec sqlx.ExtContext, id 
 	return r.crudRepo.GetByID(ctx, exec, id)
 }
 
-func (r *EventRepository) FindEvent(_ context.Context, _ sqlx.ExtContext, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error) {
+func (r *EventRepository) FindEvent(_ context.Context, _ sqlx.ExtContext, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error) {
 	r.crudRepo.mu.RLock()
 	defer r.crudRepo.mu.RUnlock()
 

@@ -1,4 +1,4 @@
-package middleware
+package handlers
 
 import (
 	"fmt"
@@ -7,39 +7,33 @@ import (
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
+	genhandlers "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/generated"
+	"github.com/labstack/echo/v4"
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-func (rw *responseWriter) WriteHeader(status int) {
-	rw.status = status
-	rw.ResponseWriter.WriteHeader(status)
-}
-
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	if rw.status == 0 {
-		rw.status = http.StatusOK
+func RegisterHandlers(router genhandlers.EchoRouter, handler *EventHandler, url string) {
+	if url == "" {
+		genhandlers.RegisterHandlers(router, handler)
+	} else {
+		genhandlers.RegisterHandlersWithBaseURL(router, handler, url)
 	}
-	return rw.ResponseWriter.Write(b)
 }
 
-func LoggingMiddleware(log logger.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func LoggingMiddleware(log logger.Logger) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 			start := time.Now()
+			req := c.Request()
+			err := next(c)
 
-			rw := &responseWriter{
-				ResponseWriter: w,
-				status:         0,
+			logHTTPRequest(log, req, c.Response().Status, start)
+
+			if err != nil {
+				log.Error("Handler error: " + err.Error())
 			}
 
-			next.ServeHTTP(rw, r)
-
-			logHTTPRequest(log, r, rw.status, start)
-		})
+			return err
+		}
 	}
 }
 

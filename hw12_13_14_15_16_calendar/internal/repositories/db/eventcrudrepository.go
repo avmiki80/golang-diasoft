@@ -106,7 +106,7 @@ func (r *EventCrudRepository) Update(ctx context.Context, exec sqlx.ExtContext, 
 }
 
 func (r *EventCrudRepository) Delete(ctx context.Context, exec sqlx.ExtContext, id string) error {
-	query, args, err := sqlx.Named(DeleteQuery, map[string]interface{}{"id": id})
+	query, args, err := sqlx.Named(DeleteQuery, map[string]any{"id": id})
 	if err != nil {
 		return fmt.Errorf("failed to prepare named query: %w", err)
 	}
@@ -133,7 +133,7 @@ func (r *EventCrudRepository) Delete(ctx context.Context, exec sqlx.ExtContext, 
 func (r *EventCrudRepository) GetByID(ctx context.Context, exec sqlx.ExtContext, id string) (*events.Event, error) {
 	var event events.Event
 
-	query, args, err := sqlx.Named(GetByIDQuery, map[string]interface{}{"id": id})
+	query, args, err := sqlx.Named(GetByIDQuery, map[string]any{"id": id})
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare named query: %w", err)
 	}

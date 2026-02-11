@@ -9,7 +9,7 @@ import (
 )
 
 type EventRepository interface {
-	FindEvent(ctx context.Context, exec sqlx.ExtContext, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error)
+	FindEvent(ctx context.Context, exec sqlx.ExtContext, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error)
 }
 
 type CompositeEventRepository interface {
