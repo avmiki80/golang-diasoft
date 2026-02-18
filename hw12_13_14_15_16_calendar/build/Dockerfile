@@ -1,4 +1,4 @@
-FROM golang:1.20 as build
+FROM golang:1.24 as build
 
 ENV BIN_FILE /opt/calendar/calendar-app
 ENV CODE_DIR /go/src/

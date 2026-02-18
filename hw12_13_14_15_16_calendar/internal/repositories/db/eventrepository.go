@@ -47,11 +47,11 @@ func (r *EventRepository) GetByID(ctx context.Context, exec sqlx.ExtContext, id 
 	return r.crudRepo.GetByID(ctx, exec, id)
 }
 
-func (r *EventRepository) FindEvent(ctx context.Context, exec sqlx.ExtContext, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error) {
+func (r *EventRepository) FindEvent(ctx context.Context, exec sqlx.ExtContext, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error) {
 	var eventsList []events.Event
 
 	whereClauses := []string{"1=1"}
-	params := make(map[string]interface{})
+	params := make(map[string]any)
 
 	if userID != "" {
 		whereClauses = append(whereClauses, "user_id = :userID")

@@ -6,7 +6,6 @@ import (
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 )
 
-// NotificationService интерфейс для отправки уведомлений о событиях.
 type NotificationService interface {
 	// NotifyEventCreated отправляет уведомление о создании события.
 	NotifyEventCreated(ctx context.Context, event domain.Event) error

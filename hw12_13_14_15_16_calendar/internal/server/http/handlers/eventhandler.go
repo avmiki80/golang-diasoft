@@ -1,47 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
-	"time"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/app"
-	events "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
-	"github.com/gorilla/mux"
+	genhandlers "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/generated"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/mapper"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 type EventHandler struct {
 	app    app.Application
 	logger logger.Logger
-}
-
-type CreateEventRequest struct {
-	Title       string `json:"title"`
-	StartDate   string `json:"startDate"`
-	EndDate     string `json:"endDate"`
-	Description string `json:"description"`
-	UserID      string `json:"userId"`
-	OffsetTime  int64  `json:"offsetTime"`
-}
-
-type UpdateEventRequest struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	StartDate   string `json:"startDate"`
-	EndDate     string `json:"endDate"`
-	Description string `json:"description"`
-	UserID      string `json:"userId"`
-	OffsetTime  int64  `json:"offsetTime"`
-}
-
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-type SuccessResponse struct {
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
 }
 
 func NewEventHandler(app app.Application, log logger.Logger) *EventHandler {
@@ -51,201 +24,106 @@ func NewEventHandler(app app.Application, log logger.Logger) *EventHandler {
 	}
 }
 
-func (h *EventHandler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/events", h.CreateEvent).Methods(http.MethodPost)
-	router.HandleFunc("/events/{id}", h.GetEvent).Methods(http.MethodGet)
-	router.HandleFunc("/events/{id}", h.UpdateEvent).Methods(http.MethodPut)
-	router.HandleFunc("/events/{id}", h.DeleteEvent).Methods(http.MethodDelete)
-	router.HandleFunc("/events", h.FindEvents).Methods(http.MethodGet)
-}
-
-func (h *EventHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	var req CreateEventRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+func (h *EventHandler) CreateEvent(ctx echo.Context) error {
+	var req genhandlers.CreateEventRequest
+	if err := ctx.Bind(&req); err != nil {
 		h.logger.Error("failed to decode request: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid request body")
-		return
+		return ctx.JSON(http.StatusBadRequest, genhandlers.ErrorResponse{Error: "invalid request body"})
 	}
 
-	startDate, err := time.Parse(time.RFC3339, req.StartDate)
-	if err != nil {
-		h.logger.Error("failed to parse start_date: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid start_date format, use RFC3339")
-		return
-	}
+	event := mapper.CreateRequestToDomain(req)
 
-	endDate, err := time.Parse(time.RFC3339, req.EndDate)
-	if err != nil {
-		h.logger.Error("failed to parse end_date: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid end_date format, use RFC3339")
-		return
-	}
-
-	event := events.Event{
-		Title:       req.Title,
-		StartDate:   startDate,
-		EndDate:     endDate,
-		Description: req.Description,
-		UserID:      req.UserID,
-		OffsetTime:  time.Duration(req.OffsetTime) * time.Minute,
-	}
-	createdEvent, err := h.app.CreateEvent(r.Context(), event)
+	createdEvent, err := h.app.CreateEvent(ctx.Request().Context(), event)
 	if err != nil {
 		h.logger.Error("failed to create event: " + err.Error())
-		h.respondError(w, http.StatusInternalServerError, err.Error())
-		return
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: "internal server error"})
 	}
 
 	h.logger.Info("event created successfully: " + createdEvent.ID)
-	h.respondSuccess(w, http.StatusCreated, "", createdEvent)
+
+	response, err := mapper.DomainToResponse(*createdEvent)
+	if err != nil {
+		h.logger.Error("failed to convert event to response: " + err.Error())
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: "internal server error"})
+	}
+	return ctx.JSON(http.StatusCreated, response)
 }
 
-func (h *EventHandler) GetEvent(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	event, err := h.app.GetEventByID(r.Context(), id)
+func (h *EventHandler) GetEvent(ctx echo.Context, id openapi_types.UUID) error {
+	event, err := h.app.GetEventByID(ctx.Request().Context(), id.String())
 	if err != nil {
 		h.logger.Error("failed to get event: " + err.Error())
-		h.respondError(w, http.StatusNotFound, "event not found")
-		return
+		return ctx.JSON(http.StatusNotFound, genhandlers.ErrorResponse{Error: "event not found"})
 	}
 
-	h.respondSuccess(w, http.StatusOK, "", event)
+	response, err := mapper.DomainToResponse(*event)
+	if err != nil {
+		h.logger.Error("failed to convert event to response: " + err.Error())
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: "internal server error"})
+	}
+	return ctx.JSON(http.StatusOK, response)
 }
 
-func (h *EventHandler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	var req UpdateEventRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+func (h *EventHandler) UpdateEvent(ctx echo.Context, id openapi_types.UUID) error {
+	var req genhandlers.UpdateEventRequest
+	if err := ctx.Bind(&req); err != nil {
 		h.logger.Error("failed to decode request: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid request body")
-		return
+		return ctx.JSON(http.StatusBadRequest, genhandlers.ErrorResponse{Error: "invalid request body"})
 	}
 
-	startDate, err := time.Parse(time.RFC3339, req.StartDate)
-	if err != nil {
-		h.logger.Error("failed to parse start_date: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid start_date format, use RFC3339")
-		return
-	}
+	event := mapper.UpdateRequestToDomain(req, id.String())
 
-	endDate, err := time.Parse(time.RFC3339, req.EndDate)
-	if err != nil {
-		h.logger.Error("failed to parse end_date: " + err.Error())
-		h.respondError(w, http.StatusBadRequest, "invalid end_date format, use RFC3339")
-		return
-	}
-
-	event := events.Event{
-		ID:          id,
-		Title:       req.Title,
-		StartDate:   startDate,
-		EndDate:     endDate,
-		Description: req.Description,
-		UserID:      req.UserID,
-		OffsetTime:  time.Duration(req.OffsetTime) * time.Minute,
-	}
-	updatedEvent, err := h.app.UpdateEvent(r.Context(), id, event)
+	updatedEvent, err := h.app.UpdateEvent(ctx.Request().Context(), id.String(), event)
 	if err != nil {
 		h.logger.Error("failed to update event: " + err.Error())
-		h.respondError(w, http.StatusInternalServerError, err.Error())
-		return
+		if err.Error() == "event not found" {
+			return ctx.JSON(http.StatusNotFound, genhandlers.ErrorResponse{Error: "event not found"})
+		}
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: err.Error()})
 	}
 
-	h.logger.Info("event updated successfully: " + id)
-	h.respondSuccess(w, http.StatusOK, "", updatedEvent)
+	h.logger.Info("event updated successfully: " + id.String())
+
+	response, err := mapper.DomainToResponse(*updatedEvent)
+	if err != nil {
+		h.logger.Error("failed to convert event to response: " + err.Error())
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: "internal server error"})
+	}
+
+	return ctx.JSON(http.StatusOK, response)
 }
 
-func (h *EventHandler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
-
-	if err := h.app.DeleteEvent(r.Context(), id); err != nil {
+func (h *EventHandler) DeleteEvent(ctx echo.Context, id openapi_types.UUID) error {
+	if err := h.app.DeleteEvent(ctx.Request().Context(), id.String()); err != nil {
 		h.logger.Error("failed to delete event: " + err.Error())
-		h.respondError(w, http.StatusInternalServerError, err.Error())
-		return
+
+		if err.Error() == "event not found" {
+			return ctx.JSON(http.StatusNotFound, genhandlers.ErrorResponse{Error: "event not found"})
+		}
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: err.Error()})
 	}
 
-	h.logger.Info("event deleted successfully: " + id)
-	h.respondSuccess(w, http.StatusOK, "event deleted successfully", id)
+	h.logger.Info("event deleted successfully: " + id.String())
+	return ctx.NoContent(http.StatusNoContent)
 }
 
-func (h *EventHandler) FindEvents(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
-	startFromStr := r.URL.Query().Get("startFrom")
-	startToStr := r.URL.Query().Get("startTo")
-	endFromStr := r.URL.Query().Get("endFrom")
-	endToStr := r.URL.Query().Get("endTo")
-
-	var startFrom, startTo, endFrom, endTo *time.Time
-
-	if startFromStr != "" {
-		t, err := time.Parse(time.RFC3339, startFromStr)
-		if err != nil {
-			h.logger.Error("failed to parse start_from: " + err.Error())
-			h.respondError(w, http.StatusBadRequest, "invalid start_from format, use RFC3339")
-			return
-		}
-		startFrom = &t
+func (h *EventHandler) FindEvents(ctx echo.Context, params genhandlers.FindEventsParams) error {
+	var userID string
+	if params.UserId != nil {
+		userID = params.UserId.String()
 	}
 
-	if startToStr != "" {
-		t, err := time.Parse(time.RFC3339, startToStr)
-		if err != nil {
-			h.logger.Error("failed to parse start_to: " + err.Error())
-			h.respondError(w, http.StatusBadRequest, "invalid start_to format, use RFC3339")
-			return
-		}
-		startTo = &t
-	}
-
-	if endFromStr != "" {
-		t, err := time.Parse(time.RFC3339, endFromStr)
-		if err != nil {
-			h.logger.Error("failed to parse end_from: " + err.Error())
-			h.respondError(w, http.StatusBadRequest, "invalid end_from format, use RFC3339")
-			return
-		}
-		endFrom = &t
-	}
-
-	if endToStr != "" {
-		t, err := time.Parse(time.RFC3339, endToStr)
-		if err != nil {
-			h.logger.Error("failed to parse end_to: " + err.Error())
-			h.respondError(w, http.StatusBadRequest, "invalid end_to format, use RFC3339")
-			return
-		}
-		endTo = &t
-	}
-
-	findedEvents, err := h.app.FindEvent(r.Context(), userID, startFrom, startTo, endFrom, endTo)
+	findedEvents, err := h.app.FindEvent(ctx.Request().Context(), userID, params.StartFrom, params.StartTo, params.EndFrom, params.EndTo)
 	if err != nil {
 		h.logger.Error("failed to find events: " + err.Error())
-		h.respondError(w, http.StatusInternalServerError, err.Error())
-		return
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: err.Error()})
 	}
 
-	h.respondSuccess(w, http.StatusOK, "", findedEvents)
-}
-
-func (h *EventHandler) respondError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	err := json.NewEncoder(w).Encode(ErrorResponse{Error: message})
+	response, err := mapper.DomainSliceToResponse(findedEvents)
 	if err != nil {
-		h.logger.Error("failed to encode ErrorResponse: " + err.Error())
+		h.logger.Error("failed to convert events to response: " + err.Error())
+		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: "internal server error"})
 	}
-}
 
-func (h *EventHandler) respondSuccess(w http.ResponseWriter, statusCode int, message string, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	err := json.NewEncoder(w).Encode(SuccessResponse{Message: message, Data: data})
-	if err != nil {
-		h.logger.Error("failed to encode SuccessResponse: " + err.Error())
-	}
+	return ctx.JSON(http.StatusOK, response)
 }

@@ -2,88 +2,75 @@ package internalhttp
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers"
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/middleware"
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 const (
-	defaultReadTimeout  = 10 * time.Second
-	defaultWriteTimeout = 10 * time.Second
-	defaultIdleTimeout  = 60 * time.Second
-	shutdownTimeout     = 3 * time.Second
+	defaultReadTimeout     = 10 * time.Second
+	defaultWriteTimeout    = 10 * time.Second
+	defaultShutdownTimeout = 5 * time.Second
 )
 
-type Server struct {
-	httpServer   *http.Server
-	logger       logger.Logger
-	eventHandler *handlers.EventHandler
+type ServerNew struct {
+	echo   *echo.Echo
+	logger logger.Logger
+	url    string
 }
 
-func NewServer(log logger.Logger, eventHandler *handlers.EventHandler, addr string) *Server {
-	srv := &Server{
-		logger:       log,
-		eventHandler: eventHandler,
+func NewServerWithGeneratedHandlers(log logger.Logger, eventHandler *handlers.EventHandler, addr string) *ServerNew {
+	e := echo.New()
+
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+	e.Use(handlers.LoggingMiddleware(log))
+
+	handlers.RegisterHandlers(e, eventHandler, "")
+
+	e.Server.ReadTimeout = defaultReadTimeout
+	e.Server.WriteTimeout = defaultWriteTimeout
+
+	return &ServerNew{
+		echo:   e,
+		logger: log,
+		url:    addr,
 	}
-
-	srv.httpServer = &http.Server{
-		Addr:         addr,
-		Handler:      srv.setupRouter(),
-		ReadTimeout:  defaultReadTimeout,
-		WriteTimeout: defaultWriteTimeout,
-		IdleTimeout:  defaultIdleTimeout,
-	}
-
-	return srv
 }
 
-func (s *Server) setupRouter() http.Handler {
-	router := mux.NewRouter()
-
-	s.eventHandler.RegisterRoutes(router)
-
-	router.Use(middleware.LoggingMiddleware(s.logger))
-
-	return router
-}
-
-func (s *Server) Start(ctx context.Context) error {
-	s.logger.Info(fmt.Sprintf("starting HTTP server on %s", s.httpServer.Addr))
+func (s *ServerNew) Start(ctx context.Context) error {
+	s.logger.Info("starting HTTP server")
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.echo.Start(s.url); err != nil && errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
 	}()
 
 	select {
 	case err := <-errChan:
-		s.logger.Error(fmt.Sprintf("server error: %v", err))
+		s.logger.Error("server error: " + err.Error())
 		return err
 	case <-ctx.Done():
 		s.logger.Info("shutdown signal received")
-		return s.shutdown()
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
+		defer cancel()
+
+		return s.echo.Shutdown(shutdownCtx)
 	}
 }
 
-func (s *Server) Stop(ctx context.Context) error {
+func (s *ServerNew) Stop(ctx context.Context) error {
 	s.logger.Info("stopping HTTP server")
-	if err := s.httpServer.Shutdown(ctx); err != nil {
-		s.logger.Error(fmt.Sprintf("server shutdown error: %v", err))
-		return err
-	}
-	s.logger.Info("HTTP server stopped successfully")
-	return nil
-}
-
-func (s *Server) shutdown() error {
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-	return s.Stop(ctx)
+	return s.echo.Shutdown(ctx)
 }

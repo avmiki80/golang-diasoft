@@ -12,6 +12,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+const EntityNotFound = "entity not found"
+
 var (
 	ErrEventNotFound     = errors.New("event not found")
 	ErrInvalidEventID    = errors.New("event ID cannot be empty")
@@ -28,7 +30,7 @@ type EventService interface {
 	UpdateEvent(ctx context.Context, id string, event events.Event) (*events.Event, error)
 	DeleteEvent(ctx context.Context, id string) error
 	GetEventByID(ctx context.Context, id string) (*events.Event, error)
-	FindEvent(ctx context.Context, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error)
+	FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error)
 }
 
 type eventService struct {
@@ -72,14 +74,13 @@ func (s *eventService) UpdateEvent(ctx context.Context, id string, event events.
 
 	var updatedEvent *events.Event
 	err := s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
-		existing, err := s.repository.GetByID(ctx, exec, id)
+		_, err := s.repository.GetByID(ctx, exec, id)
 		if err != nil {
+			if err.Error() == EntityNotFound {
+				return ErrEventNotFound
+			}
 			return err
 		}
-		if existing == nil {
-			return ErrEventNotFound
-		}
-
 		if err := s.checkCrossEvents(ctx, exec, event); err != nil {
 			return err
 		}
@@ -97,7 +98,14 @@ func (s *eventService) DeleteEvent(ctx context.Context, id string) error {
 	}
 
 	return s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
-		return s.repository.Delete(ctx, exec, id)
+		err := s.repository.Delete(ctx, exec, id)
+		if err != nil {
+			if err.Error() == EntityNotFound {
+				return ErrEventNotFound
+			}
+			return err
+		}
+		return err
 	})
 }
 
@@ -105,10 +113,17 @@ func (s *eventService) GetEventByID(ctx context.Context, id string) (*events.Eve
 	if id == "" {
 		return nil, ErrInvalidEventID
 	}
-	return s.repository.GetByID(ctx, s.getExecutor(), id)
+	founded, err := s.repository.GetByID(ctx, s.getExecutor(), id)
+	if err != nil {
+		if err.Error() == EntityNotFound {
+			return nil, ErrEventNotFound
+		}
+		return nil, err
+	}
+	return founded, nil
 }
 
-func (s *eventService) FindEvent(ctx context.Context, userID string, startFrom *time.Time, startTo *time.Time, endFrom *time.Time, endTo *time.Time) ([]events.Event, error) {
+func (s *eventService) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error) {
 	return s.repository.FindEvent(ctx, s.getExecutor(), userID, startFrom, startTo, endFrom, endTo)
 }
 

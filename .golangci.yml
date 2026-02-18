@@ -1,87 +1,257 @@
 run:
+  timeout: 5m
   tests: true
   build-tags:
     - bench
-    - !bench
-  go: '1.21'
+    - integration
+  go: '1.24'  # golangci-lint v1.64.6 собран с Go 1.24
 
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
+  issues:
+    uniq-by-line: true
 linters-settings:
+  # Depguard - проверка запрещенных импортов
   depguard:
     rules:
       main:
         allow:
-          - "github.com/stretchr/testify/require"
-          - "fmt"
-          - "time"
-          - "golang.org/x/example/hello/reverse"
+          - $gostd
+          - github.com/stretchr/testify
+          - github.com/google/uuid
+          - github.com/jmoiron/sqlx
+          - github.com/lib/pq
+          - github.com/labstack/echo/v4
+          - github.com/oapi-codegen
+          - github.com/testcontainers/testcontainers-go
+          - github.com/avmiki80/golang-diasoft
+
+  # Funlen - ограничение длины функций
   funlen:
     lines: 400
     statements: 80
+    ignore-comments: true
+
+  # Lll - ограничение длины строк
   lll:
-    line-length: 200           # максимальная длина строки
-    ignore-generated: true     # игнорировать сгенерированные файлы
-    ignore-tests: true
+    line-length: 200
+    tab-width: 4
+
+  # Tagliatelle - проверка стиля тегов
   tagliatelle:
     case:
       rules:
         json: camel      # camelCase для JSON
         yaml: camel      # camelCase для YAML
         db: snake        # snake_case для DB
+        bson: camel
+        avro: snake
+        mapstructure: kebab
+
+  # Nolintlint - проверка директив nolint
   nolintlint:
-    require-explanation: false      # не требовать объяснений
-    require-specific: false         # разрешить общий //nolint без указания линтера
-    allow-unused: true              # разрешить неиспользуемые директивы
+    require-explanation: false
+    require-specific: false
+    allow-unused: true
+    allow-no-explanation: []
+
+  # Gocyclo - цикломатическая сложность
+  gocyclo:
+    min-complexity: 30
+
+  # Gocognit - когнитивная сложность
+  gocognit:
+    min-complexity: 40
+
+  # Goconst - повторяющиеся строки
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+    ignore-tests: true
+
+  # Gocritic - различные проверки
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+      - experimental
+      - opinionated
+    disabled-checks:
+      - whyNoLint
+      - unnamedResult
+
+  # Revive - замена golint
+  revive:
+    rules:
+      - name: exported
+        disabled: false
+        arguments:
+          - "checkPrivateReceivers"
+          - "sayRepetitiveInsteadOfStutters"
+
+  # Staticcheck
+  staticcheck:
+    checks: ["all"]
+
+  # Gosec - security checker
+  gosec:
+    excludes:
+      - G404  # Use of weak random number generator
+    severity: medium
+    confidence: medium
+
+  # Errcheck - проверка обработки ошибок
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+    exclude-functions:
+      - (*database/sql.Rows).Close
+      - (*database/sql.DB).Close
+
+  # Unused - поиск неиспользуемого кода
+  unused:
+    field-writes-are-uses: true
+#    exported-is-used: true
+    exported-fields-are-used: true
+    parameters-are-used: true
+    local-variables-are-used: true
+
+  # Gofmt
+  gofmt:
+    simplify: true
+    rewrite-rules:
+      - pattern: 'interface{}'
+        replacement: 'any'
+
+  # Gofumpt - более строгий gofmt
+  gofumpt:
+    extra-rules: true
+
+  # Misspell - проверка орфографии
+  misspell:
+    locale: US
+    ignore-words:
+      - cancelled
+
+  # Nestif - вложенность if
+  nestif:
+    min-complexity: 5
+
+  # Prealloc - предварительное выделение слайсов
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
 
 issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: false
+
   exclude-rules:
+    # Исключения для тестовых файлов
     - path: _test\.go
       linters:
         - errcheck
         - dupl
         - gocyclo
         - gosec
+        - funlen
+        - gocognit
+        - goconst
+
+    # Исключения для сгенерированных файлов
+    - path: generated/
+      linters:
+        - all
+
+    # Исключения для main.go
+    - path: cmd/
+      linters:
+        - gochecknoinits
+
+    # Исключения для моков
+    - path: mocks_test\.go
+      linters:
+        - all
+
+    # Игнорировать длинные строки в комментариях
+    - source: "^//go:generate "
+      linters:
+        - lll
+
+  exclude-dirs:
+    - vendor
+    - testdata
+    - examples
+    - tmp
+    - .git
+
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
 
 linters:
+  disable-all: true
   enable:
-    - asciicheck
-    - bodyclose
-#    - depguard
-    - dogsled
-    - dupl
-    - durationcheck
-    - errorlint
-    - exhaustive
-    - funlen
-    - gci
-    - gocognit
-    - goconst
-    - gocritic
-    - gocyclo
-    - godot
-    - gofmt
-    - gofumpt
-    - goheader
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - importas
-    - ineffassign
-    - lll
-    - makezero
-    - misspell
-    - nestif
-    - nilerr
-    - noctx
-    - nolintlint
-    - prealloc
-    - predeclared
-    - revive
-    - staticcheck
-    - stylecheck
-    - tagliatelle
-    - thelper
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
+    # Базовые линтеры
+    - errcheck          # Проверка обработки ошибок
+    - gosimple          # Упрощение кода
+    - govet             # Стандартный vet
+    - ineffassign       # Неэффективные присваивания
+    - staticcheck       # Статический анализ
+    - unused            # Неиспользуемый код
+
+    # Форматирование
+    - gofmt             # Форматирование
+    - gofumpt           # Более строгий gofmt
+
+    # Стиль кода
+    - revive            # Замена golint
+    - stylecheck        # Стиль кода
+    - unconvert         # Ненужные конвертации
+    - unparam           # Неиспользуемые параметры
+    - whitespace        # Пробелы
+
+    # Сложность
+    - gocyclo           # Цикломатическая сложность
+    - gocognit          # Когнитивная сложность
+    - funlen            # Длина функций
+    - nestif            # Вложенность if
+
+    # Производительность
+    - bodyclose         # Закрытие HTTP body
+    - prealloc          # Предварительное выделение
+    - noctx             # HTTP запросы без context
+
+    # Ошибки
+    - errorlint         # Работа с ошибками
+    - nilerr            # Возврат nil error
+
+    # Безопасность
+    - gosec             # Security checker
+
+    # Качество кода
+    - goconst           # Повторяющиеся константы
+    # - gocritic        # ОТКЛЮЧЕН: несовместим с Go 1.24 в golangci-lint v1.55.2
+    - misspell          # Орфография
+    - predeclared       # Переопределение встроенных
+    - makezero          # Неправильное использование make
+
+    # Специфичные
+    - asciicheck        # Только ASCII
+    - dogsled           # Пустые идентификаторы
+    - durationcheck     # Умножение duration
+    - exhaustive        # Проверка switch
+    - goprintffuncname  # Имена printf функций
+    - importas          # Алиасы импортов
+    - lll               # Длина строк
+    - nolintlint        # Директивы nolint
+    - tagliatelle       # Стиль тегов
+    - thelper           # Хелперы тестов

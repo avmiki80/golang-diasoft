@@ -156,13 +156,13 @@ func initDBEventRepository(txManager database.TxManager) (repositories.Composite
 //     }
 // }
 
-func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.App, logg logger.Logger) *internalhttp.Server {
+func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.App, logg logger.Logger) *internalhttp.ServerNew {
 	eventHandler := handlers.NewEventHandler(calendar, logg)
 	serverAddr := httpConf.Host + ":" + httpConf.Port
-	return internalhttp.NewServer(logg, eventHandler, serverAddr)
+	return internalhttp.NewServerWithGeneratedHandlers(logg, eventHandler, serverAddr)
 }
 
-func runHTTPServer(server *internalhttp.Server, logg logger.Logger) error {
+func runHTTPServer(server *internalhttp.ServerNew, logg logger.Logger) error {
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
