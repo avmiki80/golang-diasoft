@@ -4,20 +4,20 @@ import (
 	"context"
 	"sync"
 
-	events "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
 type EventCrudRepository struct {
-	events map[string]events.Event
+	events map[string]domain.Event
 	mu     sync.RWMutex
 }
 
 func NewEventCrudRepository() *EventCrudRepository {
 	return &EventCrudRepository{
-		events: make(map[string]events.Event),
+		events: make(map[string]domain.Event),
 		mu:     sync.RWMutex{},
 	}
 }
@@ -26,7 +26,7 @@ func (r *EventCrudRepository) GetDB() *sqlx.DB {
 	return nil // Memory storage doesn't have DB
 }
 
-func (r *EventCrudRepository) Create(_ context.Context, _ sqlx.ExtContext, event events.Event) (*events.Event, error) {
+func (r *EventCrudRepository) Create(_ context.Context, _ sqlx.ExtContext, event domain.Event) (*domain.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var err error
@@ -42,7 +42,7 @@ func (r *EventCrudRepository) Create(_ context.Context, _ sqlx.ExtContext, event
 	return &event, nil
 }
 
-func (r *EventCrudRepository) Update(_ context.Context, _ sqlx.ExtContext, id string, event events.Event) (*events.Event, error) {
+func (r *EventCrudRepository) Update(_ context.Context, _ sqlx.ExtContext, id string, event domain.Event) (*domain.Event, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.events[id]; !ok {
@@ -62,7 +62,7 @@ func (r *EventCrudRepository) Delete(_ context.Context, _ sqlx.ExtContext, id st
 	return nil
 }
 
-func (r *EventCrudRepository) GetByID(_ context.Context, _ sqlx.ExtContext, id string) (*events.Event, error) {
+func (r *EventCrudRepository) GetByID(_ context.Context, _ sqlx.ExtContext, id string) (*domain.Event, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if event, exists := r.events[id]; exists {

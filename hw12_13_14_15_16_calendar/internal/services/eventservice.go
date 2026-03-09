@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/database"
-	events "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/jmoiron/sqlx"
 )
@@ -15,22 +15,26 @@ import (
 const EntityNotFound = "entity not found"
 
 var (
-	ErrEventNotFound     = errors.New("event not found")
-	ErrInvalidEventID    = errors.New("event ID cannot be empty")
-	ErrInvalidEventTitle = errors.New("event title cannot be empty")
-	ErrDateBusy          = errors.New("date is busy")
-	ErrInvalidUserID     = errors.New("user ID cannot be empty")
-	ErrInvalidStartDate  = errors.New("start date cannot be empty")
-	ErrInvalidEndDate    = errors.New("end date cannot be empty")
-	ErrInvalidDateRange  = errors.New("end date must be after start date")
+	ErrEventNotFound        = errors.New("event not found")
+	ErrInvalidEventID       = errors.New("event ID cannot be empty")
+	ErrInvalidEventTitle    = errors.New("event title cannot be empty")
+	ErrDateBusy             = errors.New("date is busy")
+	ErrInvalidUserID        = errors.New("user ID cannot be empty")
+	ErrInvalidStartDate     = errors.New("start date cannot be empty")
+	ErrInvalidEndDate       = errors.New("end date cannot be empty")
+	ErrInvalidDateRange     = errors.New("end date must be after start date")
+	ErrInvalidThresholdDate = errors.New("threshold date is empty")
 )
 
 type EventService interface {
-	CreateEvent(ctx context.Context, event events.Event) (*events.Event, error)
-	UpdateEvent(ctx context.Context, id string, event events.Event) (*events.Event, error)
+	CreateEvent(ctx context.Context, event domain.Event) (*domain.Event, error)
+	UpdateEvent(ctx context.Context, id string, event domain.Event) (*domain.Event, error)
 	DeleteEvent(ctx context.Context, id string) error
-	GetEventByID(ctx context.Context, id string) (*events.Event, error)
-	FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error)
+	GetEventByID(ctx context.Context, id string) (*domain.Event, error)
+	FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time, notificationSent *bool) ([]domain.Event, error)
+	FindUpcomingEvent(ctx context.Context, userID string, thresholdTime *time.Time) ([]domain.Event, error)
+	NotificationSent(ctx context.Context, id string) error
+	DeleteOldEvents(ctx context.Context, thresholdTime *time.Time) error
 }
 
 type eventService struct {
@@ -45,12 +49,12 @@ func NewEventService(repo repositories.CompositeEventRepository, txManager datab
 	}
 }
 
-func (s *eventService) CreateEvent(ctx context.Context, event events.Event) (*events.Event, error) {
+func (s *eventService) CreateEvent(ctx context.Context, event domain.Event) (*domain.Event, error) {
 	if err := s.validateEvent(event); err != nil {
 		return nil, err
 	}
 
-	var createdEvent *events.Event
+	var createdEvent *domain.Event
 	err := s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
 		if err := s.checkCrossEvents(ctx, exec, event); err != nil {
 			return err
@@ -63,7 +67,7 @@ func (s *eventService) CreateEvent(ctx context.Context, event events.Event) (*ev
 	return createdEvent, err
 }
 
-func (s *eventService) UpdateEvent(ctx context.Context, id string, event events.Event) (*events.Event, error) {
+func (s *eventService) UpdateEvent(ctx context.Context, id string, event domain.Event) (*domain.Event, error) {
 	if id == "" {
 		return nil, ErrInvalidEventID
 	}
@@ -72,7 +76,7 @@ func (s *eventService) UpdateEvent(ctx context.Context, id string, event events.
 		return nil, err
 	}
 
-	var updatedEvent *events.Event
+	var updatedEvent *domain.Event
 	err := s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
 		_, err := s.repository.GetByID(ctx, exec, id)
 		if err != nil {
@@ -109,7 +113,7 @@ func (s *eventService) DeleteEvent(ctx context.Context, id string) error {
 	})
 }
 
-func (s *eventService) GetEventByID(ctx context.Context, id string) (*events.Event, error) {
+func (s *eventService) GetEventByID(ctx context.Context, id string) (*domain.Event, error) {
 	if id == "" {
 		return nil, ErrInvalidEventID
 	}
@@ -123,15 +127,55 @@ func (s *eventService) GetEventByID(ctx context.Context, id string) (*events.Eve
 	return founded, nil
 }
 
-func (s *eventService) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]events.Event, error) {
-	return s.repository.FindEvent(ctx, s.getExecutor(), userID, startFrom, startTo, endFrom, endTo)
+func (s *eventService) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time, notificationSent *bool) ([]domain.Event, error) {
+	return s.repository.FindEvent(ctx, s.getExecutor(), userID, startFrom, startTo, endFrom, endTo, notificationSent)
 }
 
-func (s *eventService) checkCrossEvents(ctx context.Context, exec sqlx.ExtContext, event events.Event) error {
+func (s *eventService) NotificationSent(ctx context.Context, id string) error {
+	if id == "" {
+		return ErrInvalidEventID
+	}
+
+	err := s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
+		_, err := s.repository.GetByID(ctx, exec, id)
+		if err != nil {
+			if err.Error() == EntityNotFound {
+				return ErrEventNotFound
+			}
+			return err
+		}
+
+		err = s.repository.NotificationSent(ctx, exec, id)
+		return err
+	})
+
+	return err
+}
+
+func (s *eventService) DeleteOldEvents(ctx context.Context, thresholdTime *time.Time) error {
+	if thresholdTime == nil {
+		return ErrInvalidThresholdDate
+	}
+
+	err := s.executeWithTx(ctx, func(ctx context.Context, exec sqlx.ExtContext) error {
+		return s.repository.DeleteOldEvents(ctx, exec, thresholdTime)
+	})
+
+	return err
+}
+
+func (s *eventService) FindUpcomingEvent(ctx context.Context, userID string, thresholdTime *time.Time) ([]domain.Event, error) {
+	if thresholdTime == nil {
+		return nil, ErrInvalidThresholdDate
+	}
+	return s.repository.FindUpcomingEvent(ctx, s.getExecutor(), userID, thresholdTime)
+}
+
+func (s *eventService) checkCrossEvents(ctx context.Context, exec sqlx.ExtContext, event domain.Event) error {
 	startTo := event.EndDate.Add(-time.Nanosecond)
 	endFrom := event.StartDate.Add(time.Nanosecond)
 
-	crossEvents, err := s.repository.FindEvent(ctx, exec, event.UserID, nil, &startTo, &endFrom, nil)
+	crossEvents, err := s.repository.FindEvent(ctx, exec, event.UserID, nil, &startTo, &endFrom, nil, nil)
 	if err != nil {
 		return fmt.Errorf("failed to check cross events: %w", err)
 	}
@@ -145,7 +189,7 @@ func (s *eventService) checkCrossEvents(ctx context.Context, exec sqlx.ExtContex
 	return nil
 }
 
-func (s *eventService) validateEvent(event events.Event) error {
+func (s *eventService) validateEvent(event domain.Event) error {
 	if event.Title == "" {
 		return ErrInvalidEventTitle
 	}

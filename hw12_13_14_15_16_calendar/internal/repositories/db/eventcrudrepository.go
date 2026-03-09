@@ -6,18 +6,18 @@ import (
 	"errors"
 	"fmt"
 
-	events "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/jmoiron/sqlx"
 )
 
 const (
-	CreateQuery = `
+	CreateEventQuery = `
         INSERT INTO events (title, description, start_date, end_date, user_id, offset_time)
         VALUES (:title, :description, :start_date, :end_date, :user_id, :offset_time)
         RETURNING id, created_at, updated_at
     `
-	UpdateQuery = `
+	UpdateEventQuery = `
 		UPDATE events 
 		SET title = :title, 
 		    description = :description, 
@@ -28,9 +28,9 @@ const (
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = :id
 	`
-	DeleteQuery  = "DELETE FROM events WHERE id = :id"
-	GetByIDQuery = `
-		SELECT id, title, description, start_date, end_date, user_id, offset_time, created_at, updated_at 
+	DeleteEventQuery  = "DELETE FROM events WHERE id = :id"
+	GetByIDEventQuery = `
+		SELECT id, title, description, start_date, end_date, user_id, offset_time, notification_sent, created_at, updated_at 
 		FROM events 
 		WHERE id = :id
 	`
@@ -56,14 +56,14 @@ func (r *EventCrudRepository) Close(_ context.Context) error {
 	return r.db.Close()
 }
 
-func (r *EventCrudRepository) Create(ctx context.Context, exec sqlx.ExtContext, event events.Event) (*events.Event, error) {
+func (r *EventCrudRepository) Create(ctx context.Context, exec sqlx.ExtContext, event domain.Event) (*domain.Event, error) {
 	var createdEvent struct {
 		ID        string `db:"id"`
 		CreatedAt string `db:"created_at"`
 		UpdatedAt string `db:"updated_at"`
 	}
 
-	query, args, err := sqlx.Named(CreateQuery, event)
+	query, args, err := sqlx.Named(CreateEventQuery, event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare named query: %w", err)
 	}
@@ -78,10 +78,10 @@ func (r *EventCrudRepository) Create(ctx context.Context, exec sqlx.ExtContext, 
 	return &event, nil
 }
 
-func (r *EventCrudRepository) Update(ctx context.Context, exec sqlx.ExtContext, id string, event events.Event) (*events.Event, error) {
+func (r *EventCrudRepository) Update(ctx context.Context, exec sqlx.ExtContext, id string, event domain.Event) (*domain.Event, error) {
 	event.ID = id
 
-	query, args, err := sqlx.Named(UpdateQuery, event)
+	query, args, err := sqlx.Named(UpdateEventQuery, event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare named query: %w", err)
 	}
@@ -106,7 +106,7 @@ func (r *EventCrudRepository) Update(ctx context.Context, exec sqlx.ExtContext, 
 }
 
 func (r *EventCrudRepository) Delete(ctx context.Context, exec sqlx.ExtContext, id string) error {
-	query, args, err := sqlx.Named(DeleteQuery, map[string]any{"id": id})
+	query, args, err := sqlx.Named(DeleteEventQuery, map[string]any{"id": id})
 	if err != nil {
 		return fmt.Errorf("failed to prepare named query: %w", err)
 	}
@@ -130,10 +130,10 @@ func (r *EventCrudRepository) Delete(ctx context.Context, exec sqlx.ExtContext, 
 	return nil
 }
 
-func (r *EventCrudRepository) GetByID(ctx context.Context, exec sqlx.ExtContext, id string) (*events.Event, error) {
-	var event events.Event
+func (r *EventCrudRepository) GetByID(ctx context.Context, exec sqlx.ExtContext, id string) (*domain.Event, error) {
+	var event domain.Event
 
-	query, args, err := sqlx.Named(GetByIDQuery, map[string]any{"id": id})
+	query, args, err := sqlx.Named(GetByIDEventQuery, map[string]any{"id": id})
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare named query: %w", err)
 	}

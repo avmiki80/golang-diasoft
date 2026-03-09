@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/events/producers"
 	genhandlers "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/generated"
 	"github.com/google/uuid"
 )
@@ -18,7 +19,7 @@ func CreateRequestToDomain(req genhandlers.CreateEventRequest) domain.Event {
 		description = *req.Description
 	}
 
-	offsetTime := int64(0)
+	offsetTime := int64(15)
 	if req.OffsetTime != nil {
 		offsetTime = *req.OffsetTime
 	}
@@ -69,13 +70,14 @@ func DomainToResponse(e domain.Event) (genhandlers.Event, error) {
 	offsetMinutes := int64(e.OffsetTime / time.Minute)
 
 	return genhandlers.Event{
-		Id:          &id,
-		Title:       &e.Title,
-		StartDate:   &e.StartDate,
-		EndDate:     &e.EndDate,
-		Description: &e.Description,
-		UserId:      &userID,
-		OffsetTime:  &offsetMinutes,
+		Id:               &id,
+		Title:            &e.Title,
+		StartDate:        &e.StartDate,
+		EndDate:          &e.EndDate,
+		Description:      &e.Description,
+		UserId:           &userID,
+		OffsetTime:       &offsetMinutes,
+		NotificationSent: &e.NotificationSent,
 	}, nil
 }
 
@@ -90,4 +92,14 @@ func DomainSliceToResponse(events []domain.Event) ([]genhandlers.Event, error) {
 		result = append(result, event)
 	}
 	return result, nil
+}
+
+func DomainToNotificationMessage(e domain.Event) (producers.NotificationMessage, error) {
+	return producers.NotificationMessage{
+		EventID:   e.ID,
+		Title:     e.Title,
+		StartDate: e.StartDate,
+		EndDate:   e.EndDate,
+		UserID:    e.UserID,
+	}, nil
 }
