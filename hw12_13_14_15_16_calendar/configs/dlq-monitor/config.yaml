@@ -1,0 +1,34 @@
+logger:
+  level: INFO
+
+http:
+  host: localhost
+  port: 8084
+
+database:
+  type: db  # "memory" или "db"
+  dsn: postgres://postgres:postgres@localhost:5432/calendar?sslmode=disable
+
+kafka:
+  bootstrap_servers: ["localhost:9092"]
+  topic_configs:
+    - name: calendar-notification-command-dlq
+      partitions: 1
+      replication_factor: 1
+  producer:
+    balancer: hash
+    required_acks: 1
+    max_attempts: 3
+    batch_size: 100
+    batch_timeout: 10 # * time.Millisecond
+    compression: snappy
+    async: false
+  consumer:
+    group_id: calendar_dlq_monitor_group
+    auto_commit: true # true = автоматический коммит для мониторинга
+    retry_enable: false # DLQ мониторинг не требует retry
+    max_attempts: 1
+    initial_interval: 1 # * time.Second
+    max_interval: 10 # * time.Second
+    multiplier: 2.0
+    max_elapsed_time: 30 # * time.Second

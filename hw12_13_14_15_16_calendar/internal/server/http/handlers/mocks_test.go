@@ -42,8 +42,8 @@ func (m *MockApplication) GetEventByID(ctx context.Context, id string) (*domain.
 	return args.Get(0).(*domain.Event), args.Error(1)
 }
 
-func (m *MockApplication) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time) ([]domain.Event, error) {
-	args := m.Called(ctx, userID, startFrom, startTo, endFrom, endTo)
+func (m *MockApplication) FindEvent(ctx context.Context, userID string, startFrom, startTo, endFrom, endTo *time.Time, notificationSent *bool) ([]domain.Event, error) {
+	args := m.Called(ctx, userID, startFrom, startTo, endFrom, endTo, notificationSent)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

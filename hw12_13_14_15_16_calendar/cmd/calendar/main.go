@@ -24,7 +24,11 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "./configs/config.yaml", "Path to configuration file")
+	defaultConfig := os.Getenv("CONFIG_FILE")
+	if defaultConfig == "" {
+		defaultConfig = "./configs/calendar/config.yaml"
+	}
+	flag.StringVar(&configFile, "config", defaultConfig, "Path to configuration file")
 }
 
 func main() {
@@ -63,7 +67,7 @@ func run(config *configuration.Config, logg logger.Logger) error {
 
 	eventService := eventservice.NewEventService(eventRepo, txManager)
 	var notifyService eventservice.NotificationService
-	calendar := app.New(eventService, notifyService, logg)
+	calendar := app.NewCalendarApp(eventService, notifyService, logg)
 
 	server := initHTTPServer(config.HTTP, calendar, logg)
 
@@ -132,31 +136,7 @@ func initDBEventRepository(txManager database.TxManager) (repositories.Composite
 	return repo, nil
 }
 
-// TODO: Примеры создания других репозиториев:
-//
-// func setupNotificationRepository(dbConf configuration.DBConf, txManager database.TxManager, logg logger.Logger) (repositories.NotificationRepository, error) {
-//     switch dbConf.Type {
-//     case "memory":
-//         return setupMemoryNotificationRepository(logg)
-//     case "db":
-//         return setupDBNotificationRepository(txManager, logg)
-//     default:
-//         return nil, fmt.Errorf("unknown database type: %s", dbConf.Type)
-//     }
-// }
-//
-// func setupUserRepository(dbConf configuration.DBConf, txManager database.TxManager, logg logger.Logger) (repositories.UserRepository, error) {
-//     switch dbConf.Type {
-//     case "memory":
-//         return setupMemoryUserRepository(logg)
-//     case "db":
-//         return setupDBUserRepository(txManager, logg)
-//     default:
-//         return nil, fmt.Errorf("unknown database type: %s", dbConf.Type)
-//     }
-// }
-
-func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.App, logg logger.Logger) *internalhttp.ServerNew {
+func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.CalendarApp, logg logger.Logger) *internalhttp.ServerNew {
 	eventHandler := handlers.NewEventHandler(calendar, logg)
 	serverAddr := httpConf.Host + ":" + httpConf.Port
 	return internalhttp.NewServerWithGeneratedHandlers(logg, eventHandler, serverAddr)

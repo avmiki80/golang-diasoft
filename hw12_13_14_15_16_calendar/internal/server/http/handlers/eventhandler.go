@@ -3,21 +3,20 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/labstack/echo/v4"
-
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/app"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/mapper"
 	genhandlers "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/generated"
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers/mapper"
+	"github.com/labstack/echo/v4"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 type EventHandler struct {
-	app    app.Application
+	app    app.CalendarApplication
 	logger logger.Logger
 }
 
-func NewEventHandler(app app.Application, log logger.Logger) *EventHandler {
+func NewEventHandler(app app.CalendarApplication, log logger.Logger) *EventHandler {
 	return &EventHandler{
 		app:    app,
 		logger: log,
@@ -113,7 +112,7 @@ func (h *EventHandler) FindEvents(ctx echo.Context, params genhandlers.FindEvent
 		userID = params.UserId.String()
 	}
 
-	findedEvents, err := h.app.FindEvent(ctx.Request().Context(), userID, params.StartFrom, params.StartTo, params.EndFrom, params.EndTo)
+	findedEvents, err := h.app.FindEvent(ctx.Request().Context(), userID, params.StartFrom, params.StartTo, params.EndFrom, params.EndTo, params.NotificationSent)
 	if err != nil {
 		h.logger.Error("failed to find events: " + err.Error())
 		return ctx.JSON(http.StatusInternalServerError, genhandlers.ErrorResponse{Error: err.Error()})

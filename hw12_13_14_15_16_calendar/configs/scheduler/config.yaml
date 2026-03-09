@@ -1,0 +1,41 @@
+logger:
+  level: INFO
+
+http:
+  host: localhost
+  port: 8081
+
+database:
+  type: db  # "memory" или "db"
+  dsn: postgres://postgres:postgres@localhost:5432/calendar?sslmode=disable
+
+kafka:
+  bootstrap_servers: ["localhost:9092"]
+  topic_configs:
+    - name: calendar-notification-command
+      partitions: 3
+      replication_factor: 1
+    - name: calendar-notification-command-reply
+      partitions: 3
+      replication_factor: 1
+  producer:
+    balancer: hash
+    required_acks: 1
+    max_attempts: 3
+    batch_size: 100
+    batch_timeout: 10 # * time.Millisecond
+    compression: snappy
+    async: false
+  consumer:
+    group_id: calendar_scheduler_group
+    auto_commit: false # false = ручной коммит, true = автоматический
+    retry_enable: true
+    max_attempts: 3
+    initial_interval: 1 # * time.Second,
+    max_interval: 10 # * time.Second,
+    multiplier: 2.0
+    max_elapsed_time: 30 # * time.Second
+
+scheduler:
+  notification_interval: 60  # секунды
+  cleanup_interval: 86400    # секунды (24 часа)

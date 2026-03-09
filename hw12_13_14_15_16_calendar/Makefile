@@ -1,26 +1,126 @@
-BIN := "./bin/calendar"
-DOCKER_IMG="calendar:develop"
+# Бинарные файлы
+BIN_CALENDAR := "./bin/calendar"
+BIN_SCHEDULER := "./bin/scheduler"
+BIN_STORER := "./bin/storer"
+BIN_DLQ_MONITOR := "./bin/dlq-monitor"
 
+# Docker образы
+DOCKER_IMG_CALENDAR := "calendar:develop"
+DOCKER_IMG_SCHEDULER := "scheduler:develop"
+DOCKER_IMG_STORER := "storer:develop"
+DOCKER_IMG_DLQ_MONITOR := "dlq-monitor:develop"
+
+# Версионирование
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
 
-build:
-	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
+# ============================================================================
+# Build targets
+# ============================================================================
 
-run: build
-	$(BIN) -config ./configs/config.toml
+build: build-calendar build-scheduler build-storer build-dlq-monitor
 
-build-img:
+build-calendar:
+	go build -v -o $(BIN_CALENDAR) -ldflags "$(LDFLAGS)" ./cmd/calendar
+
+build-scheduler:
+	go build -v -o $(BIN_SCHEDULER) -ldflags "$(LDFLAGS)" ./cmd/scheduler
+
+build-storer:
+	go build -v -o $(BIN_STORER) -ldflags "$(LDFLAGS)" ./cmd/storer
+
+build-dlq-monitor:
+	go build -v -o $(BIN_DLQ_MONITOR) -ldflags "$(LDFLAGS)" ./cmd/dlq-monitor
+
+# ============================================================================
+# Run targets
+# ============================================================================
+
+run-calendar: build-calendar
+	$(BIN_CALENDAR) -config ./configs/calendar/config.yaml
+
+run-scheduler: build-scheduler
+	$(BIN_SCHEDULER) -config ./configs/scheduler/config.yaml
+
+run-storer: build-storer
+	$(BIN_STORER) -config ./configs/storer/config.yaml
+
+run-dlq-monitor: build-dlq-monitor
+	$(BIN_DLQ_MONITOR) -config ./configs/dlq-monitor/config.yaml
+
+# Для обратной совместимости
+run: run-calendar
+
+# ============================================================================
+# Version targets
+# ============================================================================
+
+version-calendar: build-calendar
+	$(BIN_CALENDAR) version
+
+version-scheduler: build-scheduler
+	$(BIN_SCHEDULER) version
+
+version-storer: build-storer
+	$(BIN_STORER) version
+
+version-dlq-monitor: build-dlq-monitor
+	$(BIN_DLQ_MONITOR) version
+
+version: version-calendar version-scheduler version-storer version-dlq-monitor
+
+# ============================================================================
+# Docker targets
+# ============================================================================
+
+build-img: build-img-calendar build-img-scheduler build-img-storer build-img-dlq-monitor
+
+build-img-calendar:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		-t $(DOCKER_IMG) \
+		--build-arg=SERVICE=calendar \
+		-t $(DOCKER_IMG_CALENDAR) \
 		-f build/Dockerfile .
 
-run-img: build-img
-	docker run $(DOCKER_IMG)
+build-img-scheduler:
+	docker build \
+		--build-arg=LDFLAGS="$(LDFLAGS)" \
+		--build-arg=SERVICE=scheduler \
+		-t $(DOCKER_IMG_SCHEDULER) \
+		-f build/Dockerfile .
 
-version: build
-	$(BIN) version
+build-img-storer:
+	docker build \
+		--build-arg=LDFLAGS="$(LDFLAGS)" \
+		--build-arg=SERVICE=storer \
+		-t $(DOCKER_IMG_STORER) \
+		-f build/Dockerfile .
+
+build-img-dlq-monitor:
+	docker build \
+		--build-arg=LDFLAGS="$(LDFLAGS)" \
+		--build-arg=SERVICE=dlq-monitor \
+		-t $(DOCKER_IMG_DLQ_MONITOR) \
+		-f build/Dockerfile .
+
+run-img-calendar: build-img-calendar
+	docker run $(DOCKER_IMG_CALENDAR)
+
+run-img-scheduler: build-img-scheduler
+	docker run $(DOCKER_IMG_SCHEDULER)
+
+run-img-storer: build-img-storer
+	docker run $(DOCKER_IMG_STORER)
+
+run-img-dlq-monitor: build-img-dlq-monitor
+	docker run $(DOCKER_IMG_DLQ_MONITOR)
+
+# Для обратной совместимости
+run-img: run-img-calendar
+
+# ============================================================================
+# Testing
+# ============================================================================
 
 test:
 	#go test -race ./internal/repositories/memory/... ./pkg/...
@@ -35,6 +135,7 @@ test-unit:
 test-integration:
 	@echo "Running integration tests with testcontainers..."
 	go test -v -race -tags=integration ./internal/repositories/db/...
+	go test -v -race -tags=integration ./internal/services/...
 
 # Все тесты
 test-all: test-unit test-integration
@@ -49,19 +150,48 @@ test-coverage:
 # Тесты с покрытием для integration
 test-coverage-integration:
 	@echo "Running integration tests with coverage..."
-	go test -race -tags=integration -coverprofile=coverage-integration.out ./internal/repositories/db/...
+	go test -race -tags=integration -coverprofile=coverage-integration.out ./internal/repositories/db/... ./internal/services/...
 	go tool cover -html=coverage-integration.out -o coverage-integration.html
 	@echo "Integration coverage report generated: coverage-integration.html"
 
+# ============================================================================
+# Code Quality
+# ============================================================================
+
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.64.6
+
+lint: install-lint-deps
+	golangci-lint run ./...
+
+fmt:
+	go fmt ./...
+
+vet:
+	go vet ./...
+
+# ============================================================================
+# Database
+# ============================================================================
 
 migrate:
 	@echo "Applying migrations..."
 	@which goose > /dev/null || (echo "goose not installed. Run: go install github.com/pressly/goose/v3/cmd/goose@latest" && exit 1)
 	cd migrations && goose postgres "postgres://postgres:postgres@localhost:5432/calendar?sslmode=disable" up
 
-# Docker Compose команды
+migrate-down:
+	@echo "Rolling back last migration..."
+	@which goose > /dev/null || (echo "goose not installed. Run: go install github.com/pressly/goose/v3/cmd/goose@latest" && exit 1)
+	cd migrations && goose postgres "postgres://postgres:postgres@localhost:5432/calendar?sslmode=disable" down
+
+migrate-status:
+	@echo "Migration status..."
+	@which goose > /dev/null || (echo "goose not installed. Run: go install github.com/pressly/goose/v3/cmd/goose@latest" && exit 1)
+	cd migrations && goose postgres "postgres://postgres:postgres@localhost:5432/calendar?sslmode=disable" status
+
+# ============================================================================
+# Docker Compose
+# ============================================================================
 up:
 	cd deployments && docker-compose up -d
 
@@ -74,8 +204,32 @@ down-volumes:
 logs:
 	cd deployments && docker-compose logs -f
 
+logs-calendar:
+	cd deployments && docker-compose logs -f calendar
+
+logs-scheduler:
+	cd deployments && docker-compose logs -f scheduler
+
+logs-storer:
+	cd deployments && docker-compose logs -f storer
+
+logs-dlq-monitor:
+	cd deployments && docker-compose logs -f dlq-monitor
+
 restart:
 	cd deployments && docker-compose restart
+
+restart-calendar:
+	cd deployments && docker-compose restart calendar
+
+restart-scheduler:
+	cd deployments && docker-compose restart scheduler
+
+restart-storer:
+	cd deployments && docker-compose restart storer
+
+restart-dlq-monitor:
+	cd deployments && docker-compose restart dlq-monitor
 
 # Пересоздать БД с миграциями
 recreate-db: down-volumes up
@@ -85,14 +239,22 @@ recreate-db: down-volumes up
 docker-migrate:
 	cd deployments && docker-compose up goose-migrate
 
-lint: install-lint-deps
-	golangci-lint run ./...
+# ============================================================================
+# Utilities
+# ============================================================================
 
-# Очистка артефактов
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf $(BIN) coverage*.out coverage*.html
+	rm -rf ./bin/* coverage*.out coverage*.html
 	@echo "Clean complete"
+
+deps:
+	go mod download
+	go mod tidy
+
+# ============================================================================
+# Help
+# ============================================================================
 
 # Помощь
 help:
@@ -133,4 +295,14 @@ help:
 	@echo "  clean                - Очистить артефакты сборки"
 	@echo "  help                 - Показать эту помощь"
 
-.PHONY: build run build-img run-img version test test-unit test-integration test-all test-coverage test-coverage-integration lint migrate migrate-down migrate-status up down down-volumes logs restart recreate-db docker-migrate install-lint-deps clean help
+.PHONY: build build-calendar build-scheduler build-storer build-dlq-monitor \
+	run run-calendar run-scheduler run-storer run-dlq-monitor \
+	version version-calendar version-scheduler version-storer version-dlq-monitor \
+	build-img build-img-calendar build-img-scheduler build-img-storer build-img-dlq-monitor \
+	run-img run-img-calendar run-img-scheduler run-img-storer run-img-dlq-monitor \
+	test test-unit test-integration test-all test-coverage test-coverage-integration \
+	lint fmt vet install-lint-deps \
+	migrate migrate-down migrate-status docker-migrate \
+	up down down-volumes logs logs-calendar logs-scheduler logs-storer logs-dlq-monitor \
+	restart restart-calendar restart-scheduler restart-storer restart-dlq-monitor \
+	recreate-db clean deps help

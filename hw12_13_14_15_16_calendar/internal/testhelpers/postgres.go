@@ -104,6 +104,9 @@ func ApplyMigrations(db *sqlx.DB) error {
 	migrationFiles := []string{
 		"00001_create_events_table.sql",
 		"00002_add_timestamps_to_events.sql",
+		"00003_create_notifications_table.sql",
+		"00004_add_notification_sent_to_events.sql",
+		"00005_create_dlq_alerts_table.sql",
 	}
 
 	for _, filename := range migrationFiles {
