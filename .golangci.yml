@@ -46,7 +46,7 @@ linters-settings:
     case:
       rules:
         json: camel      # camelCase для JSON
-        yaml: camel      # camelCase для YAML
+        yaml: snake      # snake_case для YAML
         db: snake        # snake_case для DB
         bson: camel
         avro: snake

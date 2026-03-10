@@ -1,5 +1,57 @@
 version: "3"
 services:
+  zookeeper:
+    image: 'bitnamilegacy/zookeeper:latest'
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - calendar-network
+
+  kafka:
+    image: 'bitnamilegacy/kafka:3'
+    container_name: kafka
+    ports:
+      - '9092:9092'
+    environment:
+      - KAFKA_BROKER_ID=1
+#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+#      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,INTERNAL://kafka:29092
+#      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092,INTERNAL://kafka:29092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - consumer.request.timeout.ms=30000
+      - access.control.allow.methods=GET,POST,PUT,DELETE,OPTIONS
+      - access.control.allow.origin=*
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server kafka:29092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - calendar-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    ports:
+      - 8082:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - calendar-network
+
   calendar-postgres:
     image: postgres:16-alpine
     container_name: calendar-postgres
@@ -48,15 +100,71 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DB_HOST: calendar-postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: calendar
+      CONFIG_FILE: /configs/calendar/config.prod.yaml
     volumes:
       - ../configs:/configs:ro
     depends_on:
       calendar-postgres:
+        condition: service_healthy
+      goose-migrate:
+        condition: service_completed_successfully
+    networks:
+      - calendar-network
+    restart: on-failure
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile.scheduler
+    container_name: scheduler-app
+    environment:
+      CONFIG_FILE: /configs/scheduler/config.prod.yaml
+    volumes:
+      - ../configs:/configs:ro
+    depends_on:
+      calendar-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      goose-migrate:
+        condition: service_completed_successfully
+    networks:
+      - calendar-network
+    restart: on-failure
+
+  storer:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile.storer
+    container_name: storer-app
+    environment:
+      CONFIG_FILE: /configs/storer/config.prod.yaml
+    volumes:
+      - ../configs:/configs:ro
+    depends_on:
+      calendar-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      goose-migrate:
+        condition: service_completed_successfully
+    networks:
+      - calendar-network
+    restart: on-failure
+
+  dlq-monitor:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile.dlqmonitor
+    container_name: dlq-monitor-app
+    environment:
+      CONFIG_FILE: /configs/dlq-monitor/config.prod.yaml
+    volumes:
+      - ../configs:/configs:ro
+    depends_on:
+      calendar-postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       goose-migrate:
         condition: service_completed_successfully

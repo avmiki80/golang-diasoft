@@ -394,7 +394,7 @@ func TestEventHandler_FindEvents_ByUserID(t *testing.T) {
 		},
 	}
 
-	mockApp.On("FindEvent", mock.Anything, userID.String(), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(events, nil)
+	mockApp.On("FindEvent", mock.Anything, userID.String(), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil)).Return(events, nil)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/event?userId="+userID.String(), nil)
@@ -440,7 +440,7 @@ func TestEventHandler_FindEvents_ByDateRange(t *testing.T) {
 		},
 	}
 
-	mockApp.On("FindEvent", mock.Anything, userID.String(), &startFrom, &startTo, (*time.Time)(nil), (*time.Time)(nil)).Return(events, nil)
+	mockApp.On("FindEvent", mock.Anything, userID.String(), &startFrom, &startTo, (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil)).Return(events, nil)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/event", nil)
@@ -491,7 +491,7 @@ func TestEventHandler_FindEvents_AllEvents(t *testing.T) {
 		},
 	}
 
-	mockApp.On("FindEvent", mock.Anything, "", (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(events, nil)
+	mockApp.On("FindEvent", mock.Anything, "", (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil)).Return(events, nil)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/event", nil)
@@ -518,7 +518,7 @@ func TestEventHandler_FindEvents_ServiceError(t *testing.T) {
 	mockLogger := new(MockLogger)
 	handler := NewEventHandler(mockApp, mockLogger)
 
-	mockApp.On("FindEvent", mock.Anything, "", (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(nil, errors.New("database error"))
+	mockApp.On("FindEvent", mock.Anything, "", (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*time.Time)(nil), (*bool)(nil)).Return(nil, errors.New("database error"))
 	mockLogger.On("Error", mock.Anything).Return()
 
 	e := echo.New()

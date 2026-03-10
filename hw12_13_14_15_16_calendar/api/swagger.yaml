@@ -124,6 +124,13 @@ paths:
             type: string
             format: date-time
           example: "2026-02-28T23:59:59Z"
+        - name: notificationSent
+          in: query
+          description: Filter events by notification sent flag
+          required: false
+          schema:
+            type: boolean
+          example: false
       responses:
         '200':
           description: List of events matching the criteria
@@ -142,6 +149,7 @@ paths:
                         description: "Weekly team sync meeting"
                         userId: "550e8400-e29b-41d4-a716-446655440000"
                         offsetTime: 0
+                        notificationSent: false
                       - id: "987fcdeb-51a2-43d7-b456-426614174999"
                         title: "Project Review"
                         startDate: "2026-02-15T14:00:00Z"
@@ -149,6 +157,7 @@ paths:
                         description: "Monthly project review"
                         userId: "550e8400-e29b-41d4-a716-446655440000"
                         offsetTime: 30
+                        notificationSent: false
         '400':
           description: Invalid date format in query parameters
           content:
@@ -200,6 +209,7 @@ paths:
                       description: "Weekly team sync meeting"
                       userId: "550e8400-e29b-41d4-a716-446655440000"
                       offsetTime: 0
+                      notificationSent: false
         '404':
           description: Event not found
           content:
@@ -452,7 +462,10 @@ components:
           format: int64
           description: Time offset in minutes
           example: 0
-
+        notificationSent:
+          type: boolean
+          description: flag sent notification
+          example: false
     SuccessResponse:
       type: object
       properties:

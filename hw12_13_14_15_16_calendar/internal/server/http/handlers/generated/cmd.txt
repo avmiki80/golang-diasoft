@@ -7,10 +7,8 @@
  -generate client - генерировать HTTP client
  -generate spec - встроить спецификацию
 
- oapi-codegen -package handlers -generate types,server,spec api/swagger.yaml > internal/server/http/handlers/generated.go
- oapi-codegen -package models -generate types api/swagger.yaml > internal/models/types.go
- oapi-codegen -package handlers -generate server api/swagger.yaml > internal/server/http/handlers/server.go
-
+ C:\go\go1.23.12\bin\bin\oapi-codegen.exe -package handlers -generate types,server,spec -o internal/server/http/handlers/generated/gen-eventhandler.go api/swagger.yaml
+ 
  package: handlers
  generate:
    models: true

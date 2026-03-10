@@ -11,7 +11,7 @@ CREATE TABLE events (
                         end_date TIMESTAMPTZ NOT NULL,
                         description TEXT,
                         user_id UUID NOT NULL,
-                        offset_time BIGINT DEFAULT 1,
+                        offset_time BIGINT DEFAULT 900000000000,
 
                         CONSTRAINT valid_dates CHECK (end_date > start_date)
 
