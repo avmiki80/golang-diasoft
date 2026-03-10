@@ -5,10 +5,10 @@ BIN_STORER := "./bin/storer"
 BIN_DLQ_MONITOR := "./bin/dlq-monitor"
 
 # Docker образы
-DOCKER_IMG_CALENDAR := "calendar:develop"
-DOCKER_IMG_SCHEDULER := "scheduler:develop"
-DOCKER_IMG_STORER := "storer:develop"
-DOCKER_IMG_DLQ_MONITOR := "dlq-monitor:develop"
+DOCKER_IMG_CALENDAR := "calendar-app"
+DOCKER_IMG_SCHEDULER := "scheduler-app"
+DOCKER_IMG_STORER := "storer-app"
+DOCKER_IMG_DLQ_MONITOR := "dlq-monitor-app"
 
 # Версионирование
 GIT_HASH := $(shell git log --format="%h" -n 1)
@@ -37,16 +37,16 @@ build-dlq-monitor:
 # ============================================================================
 
 run-calendar: build-calendar
-	$(BIN_CALENDAR) -config ./configs/calendar/config.yaml
+	$(BIN_CALENDAR) -config ./configs/calendar/config.prod.yaml
 
 run-scheduler: build-scheduler
-	$(BIN_SCHEDULER) -config ./configs/scheduler/config.yaml
+	$(BIN_SCHEDULER) -config ./configs/scheduler/config.prod.yaml
 
 run-storer: build-storer
-	$(BIN_STORER) -config ./configs/storer/config.yaml
+	$(BIN_STORER) -config ./configs/storer/config.prod.yaml
 
 run-dlq-monitor: build-dlq-monitor
-	$(BIN_DLQ_MONITOR) -config ./configs/dlq-monitor/config.yaml
+	$(BIN_DLQ_MONITOR) -config ./configs/dlq-monitor/config.prod.yaml
 
 # Для обратной совместимости
 run: run-calendar
@@ -78,30 +78,26 @@ build-img: build-img-calendar build-img-scheduler build-img-storer build-img-dlq
 build-img-calendar:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		--build-arg=SERVICE=calendar \
 		-t $(DOCKER_IMG_CALENDAR) \
 		-f build/Dockerfile .
 
 build-img-scheduler:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		--build-arg=SERVICE=scheduler \
 		-t $(DOCKER_IMG_SCHEDULER) \
-		-f build/Dockerfile .
+		-f build/Dockerfile.scheduler .
 
 build-img-storer:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		--build-arg=SERVICE=storer \
 		-t $(DOCKER_IMG_STORER) \
-		-f build/Dockerfile .
+		-f build/Dockerfile.storer .
 
 build-img-dlq-monitor:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		--build-arg=SERVICE=dlq-monitor \
 		-t $(DOCKER_IMG_DLQ_MONITOR) \
-		-f build/Dockerfile .
+		-f build/Dockerfile.dlqmonitor .
 
 run-img-calendar: build-img-calendar
 	docker run $(DOCKER_IMG_CALENDAR)
@@ -132,13 +128,13 @@ test-unit:
 	go test -v -race ./internal/repositories/memory/...
 
 # Интеграционные тесты с testcontainers (автоматически запускает PostgreSQL)
-test-integration:
+integration-tests:
 	@echo "Running integration tests with testcontainers..."
-	go test -v -race -tags=integration ./internal/repositories/db/...
-	go test -v -race -tags=integration ./internal/services/...
+	go test -v -race -tags=integration ./integration_tests/repositories/...
+	go test -v -race -tags=integration ./integration_tests/services/...
 
 # Все тесты
-test-all: test-unit test-integration
+test-all: test-unit integration-tests
 
 # Тесты с покрытием
 test-coverage:
@@ -150,7 +146,7 @@ test-coverage:
 # Тесты с покрытием для integration
 test-coverage-integration:
 	@echo "Running integration tests with coverage..."
-	go test -race -tags=integration -coverprofile=coverage-integration.out ./internal/repositories/db/... ./internal/services/...
+	go test -race -tags=integration -coverprofile=coverage-integration.out ./integration_tests/repositories/... ./integration_tests/services/...
 	go tool cover -html=coverage-integration.out -o coverage-integration.html
 	@echo "Integration coverage report generated: coverage-integration.html"
 
@@ -235,6 +231,21 @@ restart-dlq-monitor:
 recreate-db: down-volumes up
 	@echo "Database recreated with migrations applied"
 
+# Загрузить тестовые данные в БД (с очисткой)
+seed-db:
+	@echo "Clearing existing events..."
+	docker exec -i calendar-postgres psql -U postgres -d calendar -c "TRUNCATE TABLE public.events, public.notifications, public.dlq_alerts CASCADE;"
+	@echo "Loading seed data into database..."
+	docker exec -i calendar-postgres psql -U postgres -d calendar < deployments/init-scripts/01-init.sql
+	@echo "Seed data loaded successfully!"
+
+# Запуск с загрузкой тестовых данных
+up-with-seed: up
+	@echo "Waiting for database to be ready..."
+	@sleep 5
+	@$(MAKE) migrate-up
+	@$(MAKE) seed-db
+
 # Применить миграции в docker-compose
 docker-migrate:
 	cd deployments && docker-compose up goose-migrate
@@ -266,7 +277,7 @@ help:
 	@echo "Testing:"
 	@echo "  test                 - Запустить все тесты с -race"
 	@echo "  test-unit            - Запустить unit-тесты (memory storage)"
-	@echo "  test-integration     - Запустить integration-тесты (testcontainers)"
+	@echo "  integration-tests     - Запустить integration-тесты (testcontainers)"
 	@echo "  test-all             - Запустить все тесты (unit + integration)"
 	@echo "  test-coverage        - Тесты с покрытием"
 	@echo "  test-coverage-integration - Integration тесты с покрытием"
@@ -289,6 +300,8 @@ help:
 	@echo "  logs                 - Показать логи docker-compose"
 	@echo "  restart              - Перезапустить docker-compose"
 	@echo "  recreate-db          - Пересоздать БД с миграциями"
+	@echo "  seed-db          	  - Загрузить тестовые данные в БД (с очисткой)"
+	@echo "  up-with-seed         - Запуск с загрузкой тестовых данных"
 	@echo "  docker-migrate       - Применить миграции в docker-compose"
 	@echo ""
 	@echo "Other:"
@@ -300,9 +313,9 @@ help:
 	version version-calendar version-scheduler version-storer version-dlq-monitor \
 	build-img build-img-calendar build-img-scheduler build-img-storer build-img-dlq-monitor \
 	run-img run-img-calendar run-img-scheduler run-img-storer run-img-dlq-monitor \
-	test test-unit test-integration test-all test-coverage test-coverage-integration \
+	test test-unit integration-tests test-all test-coverage test-coverage-integration \
 	lint fmt vet install-lint-deps \
 	migrate migrate-down migrate-status docker-migrate \
 	up down down-volumes logs logs-calendar logs-scheduler logs-storer logs-dlq-monitor \
 	restart restart-calendar restart-scheduler restart-storer restart-dlq-monitor \
-	recreate-db clean deps help
+	recreate-db clean deps seed-db up-with-seed help

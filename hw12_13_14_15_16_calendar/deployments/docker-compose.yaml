@@ -63,6 +63,7 @@ services:
       - "5432:5432"
     volumes:
       - calendar_postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     networks:
       - calendar-network
     healthcheck:

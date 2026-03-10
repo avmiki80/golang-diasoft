@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package db
+package repositories
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
+	db2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestEventCrudRepository_Create_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewEventCrudRepository(db)
+	repo := db2.NewEventCrudRepository(db)
 
 	event := domain.Event{
 		Title:       "Test Event",
@@ -50,7 +51,7 @@ func TestEventCrudRepository_GetByID_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewEventCrudRepository(db)
+	repo := db2.NewEventCrudRepository(db)
 
 	event := domain.Event{
 		Title:       "Test Event GetByID",
@@ -85,7 +86,7 @@ func TestEventCrudRepository_Update_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewEventCrudRepository(db)
+	repo := db2.NewEventCrudRepository(db)
 
 	event := domain.Event{
 		Title:       "Original Title",
@@ -127,7 +128,7 @@ func TestEventCrudRepository_Delete_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewEventCrudRepository(db)
+	repo := db2.NewEventCrudRepository(db)
 
 	event := domain.Event{
 		Title:       "Event to Delete",
@@ -164,7 +165,7 @@ func TestEventCrudRepository_Transaction_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewEventCrudRepository(db)
+	repo := db2.NewEventCrudRepository(db)
 
 	event1 := domain.Event{
 		Title:       "Transaction Event 1",
