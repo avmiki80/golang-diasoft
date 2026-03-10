@@ -6,10 +6,11 @@ package services
 import (
 	"testing"
 
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/integration_tests/testhelpers"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/database"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/testhelpers"
+	services2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/services"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -18,7 +19,7 @@ type TestEnvironment struct {
 	DB         *sqlx.DB
 	TxManager  database.TxManager
 	Repository repositories.CompositeEventRepository
-	Service    EventService
+	Service    services2.EventService
 }
 
 // SetupTestEnvironment создает полное окружение для тестирования сервиса
@@ -36,7 +37,7 @@ func SetupTestEnvironment(t *testing.T) *TestEnvironment {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
 
-	service := NewEventService(repository, txManager)
+	service := services2.NewEventService(repository, txManager)
 
 	return &TestEnvironment{
 		DB:         pc.DB,

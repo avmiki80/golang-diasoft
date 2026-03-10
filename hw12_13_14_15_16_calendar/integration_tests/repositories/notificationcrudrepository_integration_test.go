@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package db
+package repositories
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
+	db2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestNotificationCrudRepository_Create_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	notification := domain.Notification{
 		Title:     "Meeting Reminder",
@@ -45,7 +46,7 @@ func TestNotificationCrudRepository_GetByID_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	notification := domain.Notification{
 		Title:     "Deadline Reminder",
@@ -72,7 +73,7 @@ func TestNotificationCrudRepository_GetByID_NotFound_WithTestcontainers(t *testi
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	_, err := repo.GetByID(ctx, db, "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
@@ -84,7 +85,7 @@ func TestNotificationCrudRepository_Update_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	notification := domain.Notification{
 		Title:     "Original Title",
@@ -119,7 +120,7 @@ func TestNotificationCrudRepository_Update_NotFound_WithTestcontainers(t *testin
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	notification := domain.Notification{
 		Title:     "Non-existent",
@@ -139,7 +140,7 @@ func TestNotificationCrudRepository_Delete_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	notification := domain.Notification{
 		Title:     "To Be Deleted",
@@ -166,7 +167,7 @@ func TestNotificationCrudRepository_Delete_NotFound_WithTestcontainers(t *testin
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	err := repo.Delete(ctx, db, "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
@@ -178,7 +179,7 @@ func TestNotificationCrudRepository_Transaction_WithTestcontainers(t *testing.T)
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	t.Run("commit transaction", func(t *testing.T) {
 		tx, err := db.Beginx()
@@ -236,7 +237,7 @@ func TestNotificationCrudRepository_MultipleNotifications_WithTestcontainers(t *
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewNotificationCrudRepository(db)
+	repo := db2.NewNotificationCrudRepository(db)
 
 	// Create multiple notifications for the same event
 	eventID := "550e8400-e29b-41d4-a716-446655440017"

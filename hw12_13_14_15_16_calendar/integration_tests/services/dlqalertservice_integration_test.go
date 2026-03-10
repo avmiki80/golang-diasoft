@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/integration_tests/testhelpers"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/database"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/testhelpers"
+	services2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/services"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func setupDLQAlertTestEnvironment(t *testing.T) (*DLQAlertTestEnvironment, func(
 	pc := testhelpers.SetupPostgresContainer(t, "dlq_alert_service_test")
 	txManager := database.NewTxManager(pc.DB)
 	repository := db.NewDLQAlertCrudRepository(pc.DB)
-	service := NewDLQAlertService(repository, txManager)
+	service := services2.NewDLQAlertService(repository, txManager)
 
 	env := &DLQAlertTestEnvironment{
 		DB:        pc.DB,
@@ -41,7 +42,7 @@ func setupDLQAlertTestEnvironment(t *testing.T) (*DLQAlertTestEnvironment, func(
 type DLQAlertTestEnvironment struct {
 	DB        *sqlx.DB
 	TxManager database.TxManager
-	Service   DLQAlertService
+	Service   services2.DLQAlertService
 }
 
 func TestDLQAlertService_CreateAlert_Success(t *testing.T) {

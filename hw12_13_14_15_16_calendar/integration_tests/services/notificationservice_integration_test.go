@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/integration_tests/testhelpers"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/database"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/testhelpers"
+	services2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/services"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func setupNotificationTestEnvironment(t *testing.T) (*NotificationTestEnvironmen
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
-	service := NewNotificationService(repository, txManager)
+	service := services2.NewNotificationService(repository, txManager)
 
 	env := &NotificationTestEnvironment{
 		DB:        pc.DB,
@@ -46,7 +47,7 @@ func setupNotificationTestEnvironment(t *testing.T) (*NotificationTestEnvironmen
 type NotificationTestEnvironment struct {
 	DB        *sqlx.DB
 	TxManager database.TxManager
-	Service   NotificationService
+	Service   services2.NotificationService
 }
 
 func TestNotificationService_CreateNotification_Success(t *testing.T) {
@@ -97,7 +98,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    userID,
 				EventID:   eventID,
 			},
-			expectedErr: ErrInvalidEventTitle,
+			expectedErr: services2.ErrInvalidEventTitle,
 		},
 		{
 			name: "empty user ID",
@@ -108,7 +109,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    "",
 				EventID:   eventID,
 			},
-			expectedErr: ErrInvalidUserID,
+			expectedErr: services2.ErrInvalidUserID,
 		},
 		{
 			name: "empty event ID",
@@ -119,7 +120,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    userID,
 				EventID:   "",
 			},
-			expectedErr: ErrInvalidEventID,
+			expectedErr: services2.ErrInvalidEventID,
 		},
 		{
 			name: "zero start date",
@@ -130,7 +131,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    userID,
 				EventID:   eventID,
 			},
-			expectedErr: ErrInvalidStartDate,
+			expectedErr: services2.ErrInvalidStartDate,
 		},
 		{
 			name: "zero end date",
@@ -141,7 +142,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    userID,
 				EventID:   eventID,
 			},
-			expectedErr: ErrInvalidEndDate,
+			expectedErr: services2.ErrInvalidEndDate,
 		},
 		{
 			name: "end date before start date",
@@ -152,7 +153,7 @@ func TestNotificationService_CreateNotification_ValidationErrors(t *testing.T) {
 				UserID:    userID,
 				EventID:   eventID,
 			},
-			expectedErr: ErrInvalidDateRange,
+			expectedErr: services2.ErrInvalidDateRange,
 		},
 	}
 
@@ -244,7 +245,7 @@ func TestNotificationService_UpdateNotification_NotFound(t *testing.T) {
 
 	_, err := env.Service.UpdateNotification(ctx, uuid.New().String(), notification)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEventNotFound)
+	assert.ErrorIs(t, err, services2.ErrEventNotFound)
 }
 
 func TestNotificationService_UpdateNotification_EmptyID(t *testing.T) {
@@ -263,7 +264,7 @@ func TestNotificationService_UpdateNotification_EmptyID(t *testing.T) {
 
 	_, err := env.Service.UpdateNotification(ctx, "", notification)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrInvalidEventID)
+	assert.ErrorIs(t, err, services2.ErrInvalidEventID)
 }
 
 func TestNotificationService_DeleteNotification_Success(t *testing.T) {
@@ -289,7 +290,7 @@ func TestNotificationService_DeleteNotification_Success(t *testing.T) {
 	// Verify deletion
 	_, err = env.Service.GetNotificationByID(ctx, created.ID)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEventNotFound)
+	assert.ErrorIs(t, err, services2.ErrEventNotFound)
 }
 
 func TestNotificationService_DeleteNotification_NotFound(t *testing.T) {
@@ -300,7 +301,7 @@ func TestNotificationService_DeleteNotification_NotFound(t *testing.T) {
 
 	err := env.Service.DeleteNotification(ctx, uuid.New().String())
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEventNotFound)
+	assert.ErrorIs(t, err, services2.ErrEventNotFound)
 }
 
 func TestNotificationService_DeleteNotification_EmptyID(t *testing.T) {
@@ -311,7 +312,7 @@ func TestNotificationService_DeleteNotification_EmptyID(t *testing.T) {
 
 	err := env.Service.DeleteNotification(ctx, "")
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrInvalidEventID)
+	assert.ErrorIs(t, err, services2.ErrInvalidEventID)
 }
 
 func TestNotificationService_GetNotificationByID_Success(t *testing.T) {
@@ -348,7 +349,7 @@ func TestNotificationService_GetNotificationByID_NotFound(t *testing.T) {
 
 	_, err := env.Service.GetNotificationByID(ctx, uuid.New().String())
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEventNotFound)
+	assert.ErrorIs(t, err, services2.ErrEventNotFound)
 }
 
 func TestNotificationService_GetNotificationByID_EmptyID(t *testing.T) {
@@ -359,7 +360,7 @@ func TestNotificationService_GetNotificationByID_EmptyID(t *testing.T) {
 
 	_, err := env.Service.GetNotificationByID(ctx, "")
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrInvalidEventID)
+	assert.ErrorIs(t, err, services2.ErrInvalidEventID)
 }
 
 func TestNotificationService_TransactionCommit(t *testing.T) {
@@ -467,5 +468,5 @@ func TestNotificationService_CRUD_Workflow(t *testing.T) {
 	// Verify deleted
 	_, err = env.Service.GetNotificationByID(ctx, created.ID)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEventNotFound)
+	assert.ErrorIs(t, err, services2.ErrEventNotFound)
 }

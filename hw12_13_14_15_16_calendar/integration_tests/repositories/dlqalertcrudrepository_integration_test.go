@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package db
+package repositories
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
+	db2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestDLQAlertCrudRepository_Create_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	alert := domain.DLQAlert{
 		Topic:           "calendar-notification-command-dlq",
@@ -52,7 +53,7 @@ func TestDLQAlertCrudRepository_GetByID_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	alert := domain.DLQAlert{
 		Topic:           "calendar-notification-command-dlq",
@@ -86,7 +87,7 @@ func TestDLQAlertCrudRepository_GetByID_NotFound_WithTestcontainers(t *testing.T
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	_, err := repo.GetByID(ctx, db, "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
@@ -98,7 +99,7 @@ func TestDLQAlertCrudRepository_Update_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	alert := domain.DLQAlert{
 		Topic:           "calendar-notification-command-dlq",
@@ -134,7 +135,7 @@ func TestDLQAlertCrudRepository_Update_NotFound_WithTestcontainers(t *testing.T)
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	alert := domain.DLQAlert{
 		Status: "resolved",
@@ -150,7 +151,7 @@ func TestDLQAlertCrudRepository_Delete_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	alert := domain.DLQAlert{
 		Topic:           "calendar-notification-command-dlq",
@@ -182,7 +183,7 @@ func TestDLQAlertCrudRepository_Delete_NotFound_WithTestcontainers(t *testing.T)
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	err := repo.Delete(ctx, db, "550e8400-e29b-41d4-a716-446655440000")
 	require.Error(t, err)
@@ -194,7 +195,7 @@ func TestDLQAlertCrudRepository_GetUnresolvedCount_WithTestcontainers(t *testing
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	// Initially should be 0
 	count, err := repo.GetUnresolvedCount(ctx, db)
@@ -253,7 +254,7 @@ func TestDLQAlertCrudRepository_GetByStatus_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	// Create alerts with different statuses
 	statuses := []string{"new", "new", "processing", "resolved", "new"}
@@ -329,7 +330,7 @@ func TestDLQAlertCrudRepository_Transaction_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	repo := NewDLQAlertCrudRepository(db)
+	repo := db2.NewDLQAlertCrudRepository(db)
 
 	t.Run("commit transaction", func(t *testing.T) {
 		tx, err := db.Beginx()

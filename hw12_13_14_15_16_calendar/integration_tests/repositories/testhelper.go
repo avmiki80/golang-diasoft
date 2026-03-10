@@ -1,12 +1,12 @@
 //go:build integration
 // +build integration
 
-package db
+package repositories
 
 import (
 	"testing"
 
-	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/testhelpers"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/integration_tests/testhelpers"
 	"github.com/jmoiron/sqlx"
 )
 
