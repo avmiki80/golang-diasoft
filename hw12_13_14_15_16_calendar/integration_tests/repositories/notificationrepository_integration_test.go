@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package db
+package repositories
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/domain"
+	db2 "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,8 +19,8 @@ func TestNotificationRepository_FindNotification_ByEventID_WithTestcontainers(t 
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	// Create notifications for different events
@@ -91,8 +92,8 @@ func TestNotificationRepository_FindNotification_ByUserID_WithTestcontainers(t *
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	// Create notifications for different users
@@ -159,8 +160,8 @@ func TestNotificationRepository_FindNotification_ByEventIDAndUserID_WithTestcont
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	// Create notifications with various combinations
@@ -229,8 +230,8 @@ func TestNotificationRepository_FindNotification_NoFilters_WithTestcontainers(t 
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	// Create several notifications
@@ -272,8 +273,8 @@ func TestNotificationRepository_FindNotification_EmptyStrings_WithTestcontainers
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	notification := domain.Notification{
@@ -309,8 +310,8 @@ func TestNotificationRepository_CRUD_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	notification := domain.Notification{
@@ -362,8 +363,8 @@ func TestNotificationRepository_Idempotency_WithTestcontainers(t *testing.T) {
 	defer cleanupTestData(t, db)
 
 	ctx := context.Background()
-	crudRepo := NewNotificationCrudRepository(db)
-	repo, err := NewNotificationRepository(crudRepo)
+	crudRepo := db2.NewNotificationCrudRepository(db)
+	repo, err := db2.NewNotificationRepository(crudRepo)
 	require.NoError(t, err)
 
 	eventID := "550e8400-e29b-41d4-a716-446655440050"
