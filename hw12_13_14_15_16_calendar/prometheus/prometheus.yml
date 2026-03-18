@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s  # Частота сбора метрик
+
+scrape_configs:
+  - job_name: 'calendar-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['calendar-app:8080']
+#      - targets: ['host.docker.internal:8080']
+  - job_name: 'storer-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['storer-app:8080']
+  - job_name: 'dlq-monitor-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['dlq-monitor-app:8080']
