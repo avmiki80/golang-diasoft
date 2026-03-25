@@ -1,7 +1,7 @@
 package hw10programoptimization
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"io"
 	"regexp"
@@ -17,6 +17,9 @@ type User struct {
 	Password string
 	Address  string
 }
+type userEmail struct {
+	Email string `json:"Email"`
+}
 
 type DomainStat map[string]int
 
@@ -28,38 +31,55 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	return countDomains(u, domain)
 }
 
-type users [100_000]User
+type users []userEmail
 
-func getUsers(r io.Reader) (result users, err error) {
-	content, err := io.ReadAll(r)
-	if err != nil {
-		return
-	}
+func getUsers(r io.Reader) (users, error) {
+	result := make(users, 0, 100_000)
+	scanner := bufio.NewScanner(r)
 
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		var user User
-		if err = json.Unmarshal([]byte(line), &user); err != nil {
-			return
+	// Увеличиваем буфер для больших строк
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
 		}
-		result[i] = user
+
+		var user userEmail
+		if err := user.UnmarshalJSON(line); err != nil {
+			return nil, err
+		}
+		result = append(result, user)
 	}
-	return
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func countDomains(u users, domain string) (DomainStat, error) {
 	result := make(DomainStat)
 
+	domainPattern, err := regexp.Compile(`\.` + domain + `$`)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
-			return nil, err
+		atIdx := strings.IndexByte(user.Email, '@')
+		if atIdx == -1 || atIdx == len(user.Email)-1 {
+			continue
 		}
 
-		if matched {
-			num := result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])]
-			num++
-			result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])] = num
+		emailDomain := user.Email[atIdx+1:]
+
+		if domainPattern.MatchString(emailDomain) {
+			lowerDomain := strings.ToLower(emailDomain)
+			result[lowerDomain]++
 		}
 	}
 	return result, nil
