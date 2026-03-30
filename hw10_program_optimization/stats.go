@@ -17,6 +17,7 @@ type User struct {
 	Password string
 	Address  string
 }
+
 type userEmail struct {
 	Email string `json:"Email"`
 }
@@ -37,7 +38,6 @@ func getUsers(r io.Reader) (users, error) {
 	result := make(users, 0, 100_000)
 	scanner := bufio.NewScanner(r)
 
-	// Увеличиваем буфер для больших строк
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 
