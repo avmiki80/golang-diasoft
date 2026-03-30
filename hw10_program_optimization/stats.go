@@ -19,7 +19,7 @@ type User struct {
 }
 
 type userEmail struct {
-	Email string `json:"Email"`
+	Email string `json:"email"`
 }
 
 type DomainStat map[string]int
