@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,8 +14,10 @@ import (
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/events"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/events/consumers"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/metrics"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
+	internalhttp "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/services"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -29,7 +30,7 @@ var configFile string
 func init() {
 	defaultConfig := os.Getenv("CONFIG_FILE")
 	if defaultConfig == "" {
-		defaultConfig = "./configs/dlq-monitor/config.prod.yaml"
+		defaultConfig = "./configs/dlq-monitor/config.yaml"
 	}
 	flag.StringVar(&configFile, "config", defaultConfig, "Path to configuration file")
 }
@@ -87,12 +88,31 @@ func run(config *configuration.Config, logg logger.Logger) error {
 	consumer := initConsumer(config, dlqAlertService, logg)
 	defer consumer.Close()
 
-	// Запуск HTTP сервера для health checks
-	httpServer := startHTTPServer(config.HTTP, logg)
+	// Инициализация метрик
+	sqlDB := txManager.GetDB().DB
+	reg, m := metrics.NewPrometheusRegistry(&metrics.RegistryConfig{
+		DB: sqlDB,
+	})
+
+	// Запуск HTTP сервера
+	httpServer := internalhttp.NewServerWithGeneratedHandlers(&internalhttp.ServerConfig{
+		Logger:       logg,
+		EventHandler: nil, // для dlq-monitor не нужны бизнес-хендлеры
+		Metric:       m,
+		Registry:     reg,
+		Addr:         fmt.Sprintf("%s:%s", config.HTTP.Host, config.HTTP.Port),
+	})
+
+	go func() {
+		if err := httpServer.Start(ctx); err != nil {
+			logg.Error("HTTP server error: " + err.Error())
+		}
+	}()
+
 	defer func() {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		if err := httpServer.Stop(shutdownCtx); err != nil {
 			logg.Error("failed to shutdown HTTP server: " + err.Error())
 		}
 	}()
@@ -119,30 +139,6 @@ func run(config *configuration.Config, logg logger.Logger) error {
 
 	logg.Info("DLQ Monitor service stopped")
 	return nil
-}
-
-func startHTTPServer(httpConf configuration.HTTPConf, logg logger.Logger) *http.Server {
-	mux := http.NewServeMux()
-
-	// Health check endpoint
-	//mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-	//	w.WriteHeader(http.StatusOK)
-	//	w.Write([]byte("OK"))
-	//})
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", httpConf.Host, httpConf.Port),
-		Handler: mux,
-	}
-
-	go func() {
-		logg.Info(fmt.Sprintf("HTTP server listening on %s:%s", httpConf.Host, httpConf.Port))
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logg.Error("HTTP server error: " + err.Error())
-		}
-	}()
-
-	return server
 }
 
 func initDatabase(dbConf configuration.DBConf, logg logger.Logger) (database.TxManager, func(), error) {

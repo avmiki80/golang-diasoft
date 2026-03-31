@@ -173,9 +173,39 @@ services:
       - calendar-network
     restart: on-failure
 
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - calendar-network
+    depends_on:
+      - calendar
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "7000:3000"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning
+      - grafana-storage:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_PASSWORD_HINT: "true"
+    networks:
+      - calendar-network
+    depends_on:
+      - prometheus
+
 networks:
   calendar-network:
     driver: bridge
 
 volumes:
   calendar_postgres_data:
+  grafana-storage:

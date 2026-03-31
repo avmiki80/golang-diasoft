@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -13,12 +14,14 @@ import (
 	configuration "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/config"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/database"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/metrics"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/db"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/repositories/memory"
 	internalhttp "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers"
 	eventservice "github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/services"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var configFile string
@@ -69,7 +72,13 @@ func run(config *configuration.Config, logg logger.Logger) error {
 	var notifyService eventservice.NotificationService
 	calendar := app.NewCalendarApp(eventService, notifyService, logg)
 
-	server := initHTTPServer(config.HTTP, calendar, logg)
+	var sqlDB *sql.DB
+	if txManager != nil {
+		sqlDB = txManager.GetDB().DB
+	}
+	reg, m := initMetrics(sqlDB)
+
+	server := initHTTPServer(config.HTTP, calendar, logg, reg, m)
 
 	return runHTTPServer(server, logg)
 }
@@ -136,10 +145,24 @@ func initDBEventRepository(txManager database.TxManager) (repositories.Composite
 	return repo, nil
 }
 
-func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.CalendarApp, logg logger.Logger) *internalhttp.ServerNew {
+func initMetrics(sqlDB *sql.DB) (*prometheus.Registry, *metrics.Metric) {
+	reg, m := metrics.NewPrometheusRegistry(&metrics.RegistryConfig{
+		DB: sqlDB,
+	})
+	return reg, m
+}
+
+func initHTTPServer(httpConf configuration.HTTPConf, calendar *app.CalendarApp, logg logger.Logger, reg *prometheus.Registry, m *metrics.Metric) *internalhttp.ServerNew {
 	eventHandler := handlers.NewEventHandler(calendar, logg)
 	serverAddr := httpConf.Host + ":" + httpConf.Port
-	return internalhttp.NewServerWithGeneratedHandlers(logg, eventHandler, serverAddr)
+
+	return internalhttp.NewServerWithGeneratedHandlers(&internalhttp.ServerConfig{
+		Logger:       logg,
+		EventHandler: eventHandler,
+		Metric:       m,
+		Registry:     reg,
+		Addr:         serverAddr,
+	})
 }
 
 func runHTTPServer(server *internalhttp.ServerNew, logg logger.Logger) error {

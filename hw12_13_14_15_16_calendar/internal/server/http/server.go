@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/logger"
+	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/metrics"
 	"github.com/avmiki80/golang-diasoft/hw12_13_14_15_16_calendar/internal/server/http/handlers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -24,7 +27,16 @@ type ServerNew struct {
 	url    string
 }
 
-func NewServerWithGeneratedHandlers(log logger.Logger, eventHandler *handlers.EventHandler, addr string) *ServerNew {
+// ServerConfig содержит конфигурацию для создания HTTP сервера
+type ServerConfig struct {
+	Logger       logger.Logger
+	EventHandler *handlers.EventHandler
+	Metric       *metrics.Metric
+	Registry     *prometheus.Registry
+	Addr         string
+}
+
+func NewServerWithGeneratedHandlers(config *ServerConfig) *ServerNew {
 	e := echo.New()
 
 	e.HideBanner = true
@@ -32,17 +44,26 @@ func NewServerWithGeneratedHandlers(log logger.Logger, eventHandler *handlers.Ev
 
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
-	e.Use(handlers.LoggingMiddleware(log))
+	e.Use(handlers.LoggingMiddleware(config.Logger))
+	e.Use(handlers.PrometheusMiddleware(*config.Metric))
 
-	handlers.RegisterHandlers(e, eventHandler, "")
+	if config.EventHandler != nil {
+		handlers.RegisterHandlers(e, config.EventHandler, "")
+	}
+
+	// Регистрируем эндпоинт для метрик Prometheus
+	e.GET("/actuator/prometheus", echo.WrapHandler(promhttp.HandlerFor(config.Registry, promhttp.HandlerOpts{Registry: config.Registry})))
+
+	// Регистрируем health check эндпоинт
+	e.GET("/health", handlers.HealthHandler(config.Metric))
 
 	e.Server.ReadTimeout = defaultReadTimeout
 	e.Server.WriteTimeout = defaultWriteTimeout
 
 	return &ServerNew{
 		echo:   e,
-		logger: log,
-		url:    addr,
+		logger: config.Logger,
+		url:    config.Addr,
 	}
 }
 
